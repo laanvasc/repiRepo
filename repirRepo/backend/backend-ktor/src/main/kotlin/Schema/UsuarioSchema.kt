@@ -1,46 +1,10 @@
-package com.example.repiRepo
+package models
 
-import kotlinx.serialization.KSerializer
-import kotlinx.serialization.Serializable
-import kotlinx.serialization.descriptors.PrimitiveKind
-import kotlinx.serialization.descriptors.PrimitiveSerialDescriptor
-import kotlinx.serialization.descriptors.SerialDescriptor
-import kotlinx.serialization.encoding.Decoder
-import kotlinx.serialization.encoding.Encoder
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import java.sql.Connection
 import java.time.LocalDate
 import java.util.UUID
-
-// Serializers para kotlinx.serialization lidar com UUID e LocalDate
-object UUIDSerializer : KSerializer<UUID> {
-    override val descriptor: SerialDescriptor = PrimitiveSerialDescriptor("UUID", PrimitiveKind.STRING)
-    override fun serialize(encoder: Encoder, value: UUID) = encoder.encodeString(value.toString())
-    override fun deserialize(decoder: Decoder): UUID = UUID.fromString(decoder.decodeString())
-}
-
-object LocalDateSerializer : KSerializer<LocalDate> {
-    override val descriptor: SerialDescriptor = PrimitiveSerialDescriptor("LocalDate", PrimitiveKind.STRING)
-    override fun serialize(encoder: Encoder, value: LocalDate) = encoder.encodeString(value.toString())
-    override fun deserialize(decoder: Decoder): LocalDate = LocalDate.parse(decoder.decodeString())
-}
-
-@Serializable
-data class Usuarios(
-    @Serializable(with = UUIDSerializer::class)
-    val id: UUID? = null,
-    val nome: String,
-    val email: String,
-    val passwordHash: String,
-    val xp: Int = 0,
-    val level: Int = 1,
-    val ofensivaAtual: Int = 0,
-    val recordeMaximo: Int = 0,
-    @Serializable(with = LocalDateSerializer::class)
-    val dataUltimaAtividade: LocalDate? = null,
-    val avatarUrl: String? = null
-)
 
 class UserService(private val connection: Connection) {
 
@@ -50,6 +14,7 @@ class UserService(private val connection: Connection) {
         }
     }
 
+    // Create (Criar Usuário)
     suspend fun create(usuario: Usuarios): UUID = withContext(Dispatchers.IO) {
         connection.prepareStatement(INSERT_USUARIO).use { statement ->
             statement.setString(1, usuario.nome)
@@ -112,6 +77,35 @@ class UserService(private val connection: Connection) {
             val rowsAffected = statement.executeUpdate()
             if (rowsAffected == 0) {
                 throw Exception("Nenhum usuário foi atualizado. ID não encontrado.")
+            }
+        }
+    }
+
+    // Update (Atualizar XP e Nível)
+    suspend fun updateXpENivel(id: UUID, xp: Int, level: Int) = withContext(Dispatchers.IO) {
+        connection.prepareStatement(UPDATE_USUARIOS_XP_E_NIVEL).use { statement ->
+            statement.setInt(1, xp)
+            statement.setInt(2, level)
+            statement.setString(3, id.toString())
+
+            val rowsAffected = statement.executeUpdate()
+            if (rowsAffected == 0) {
+                throw Exception("Falha ao atualizar XP/Nível. ID não encontrado.")
+            }
+        }
+    }
+
+    // Update (Atualizar Ofensiva/Streak)
+    suspend fun updateOfensiva(id: UUID, ofensivaAtual: Int, recordeMaximo: Int, dataUltimaAtividade: LocalDate) = withContext(Dispatchers.IO) {
+        connection.prepareStatement(UPDATE_USUARIOS_OFENSIVA).use { statement ->
+            statement.setInt(1, ofensivaAtual)
+            statement.setInt(2, recordeMaximo)
+            statement.setString(3, dataUltimaAtividade.toString())
+            statement.setString(4, id.toString())
+
+            val rowsAffected = statement.executeUpdate()
+            if (rowsAffected == 0) {
+                throw Exception("Falha ao atualizar ofensiva. ID não encontrado.")
             }
         }
     }
