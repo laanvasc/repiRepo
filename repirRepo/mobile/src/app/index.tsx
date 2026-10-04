@@ -51,6 +51,7 @@ const [email, setEmail] = useState('');
         <ThemedText type="code" style={styles.code}>
           <Button
           titulo="textotexto"
+          
           onPress={()=> console.log("testando")}
           />
           <InputText 

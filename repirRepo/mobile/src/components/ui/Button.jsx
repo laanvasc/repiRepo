@@ -57,21 +57,19 @@ const styles = StyleSheet.create({
   primeiroButton: {
     backgroundColor: '#FF5E32', 
     width: '100%',
-    shadowColor: '#FF5E3A',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 5,
-    elevation: 4, // Shadow for Android
   },
   primeiroText: {
     color: '#FFFFFF',
   },
 
-  // segundo estilo
+  // estilo outlined
   segundaButton: {
     backgroundColor: 'transparent',
     borderWidth: 1,
-    borderColor: '#007AFF',
+    borderColor: '#FF5E3A',
+    color: '#FF5E3A',
+    
+    width: '100%',
   },
   segundaText: {
     color: '#007AFF',
