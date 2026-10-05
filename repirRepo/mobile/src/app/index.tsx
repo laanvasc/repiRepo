@@ -11,6 +11,8 @@ import { useState } from 'react';
 
 import Button from '../components/ui/Button';
 import InputText from '../components/ui/InputText';
+import Trofeu from '../components/ui/Trofeu';
+import MetaCard from '../components/ui/MetaCard';
 
 
 // function getDevMenuHint() {
@@ -31,6 +33,8 @@ import InputText from '../components/ui/InputText';
 //     </ThemedText>
 //   );
 // }
+
+
 
 export default function HomeScreen() {
 
@@ -62,6 +66,12 @@ const [email, setEmail] = useState('');
             value={email}
             onChangeText={setEmail}
           />
+          <Trofeu
+            tituloTrofeu="123"
+          />
+          <MetaCard tituloMeta='123'></MetaCard>
+
+          
           
         </ThemedText>
 
