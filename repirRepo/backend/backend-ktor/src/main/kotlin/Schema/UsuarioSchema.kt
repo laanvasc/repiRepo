@@ -1,7 +1,8 @@
-package models
+package Schema
 
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
+import models.Usuarios
 import java.sql.Connection
 import java.time.LocalDate
 import java.util.UUID
@@ -38,7 +39,7 @@ class UserService(private val connection: Connection) {
             val resultSet = statement.executeQuery()
 
             if (resultSet.next()) {
-                val name = resultSet.getString("name")
+                val nome = resultSet.getString("nome")
                 val email = resultSet.getString("email")
                 val passwordHash = resultSet.getString("password_hash")
                 val xp = resultSet.getInt("xp")
@@ -50,7 +51,7 @@ class UserService(private val connection: Connection) {
 
                 return@withContext Usuarios(
                     id = id,
-                    nome = name,
+                    nome = nome,
                     email = email,
                     passwordHash = passwordHash,
                     xp = xp,
@@ -126,7 +127,7 @@ class UserService(private val connection: Connection) {
         private const val CREATE_TABLE_USUARIOS = """
             CREATE TABLE IF NOT EXISTS Usuarios (
                 id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-                name VARCHAR(100) NOT NULL,
+                nome VARCHAR(100) NOT NULL,
                 email VARCHAR(255) NOT NULL UNIQUE,
                 password_hash VARCHAR(255) NOT NULL,
                 xp INT NOT NULL DEFAULT 0 CHECK (xp >= 0),
@@ -144,10 +145,10 @@ class UserService(private val connection: Connection) {
             "SELECT * FROM Usuarios WHERE id = ?::uuid;"
 
         private const val INSERT_USUARIO =
-            "INSERT INTO Usuarios (name, email, password_hash, avatar_url) VALUES (?, ?, ?, ?) RETURNING id;"
+            "INSERT INTO Usuarios (nome, email, password_hash, avatar_url) VALUES (?, ?, ?, ?) RETURNING id;"
 
         private const val UPDATE_USUARIO_PERFIL =
-            "UPDATE Usuarios SET name = ?, email = ?, avatar_url = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?::uuid;"
+            "UPDATE Usuarios SET nome = ?, email = ?, avatar_url = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?::uuid;"
 
         private const val UPDATE_USUARIOS_XP_E_NIVEL =
             "UPDATE Usuarios SET xp = ?, level = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?::uuid;"
