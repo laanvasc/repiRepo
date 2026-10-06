@@ -69,7 +69,7 @@ const [email, setEmail] = useState('');
           <Trofeu
             tituloTrofeu="123"
           />
-          <MetaCard tituloMeta='123'></MetaCard>
+          <MetaCard tituloMeta='123'/>
 
           
           
