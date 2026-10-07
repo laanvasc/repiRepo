@@ -13,6 +13,8 @@ import Button from '../components/ui/Button';
 import InputText from '../components/ui/InputText';
 import Trofeu from '../components/ui/Trofeu';
 import MetaCard from '../components/ui/MetaCard';
+import ProximaAtividadeCard from '../components/ui/ProximaAtividadeCard';
+import MensalCard from '../components/ui/MensalCard'; 
 
 
 // function getDevMenuHint() {
@@ -34,11 +36,9 @@ import MetaCard from '../components/ui/MetaCard';
 //   );
 // }
 
-
-
 export default function HomeScreen() {
 
-const [email, setEmail] = useState('');
+  const [email, setEmail] = useState('');
   const [senha, setSenha] = useState('');
 
   return (
@@ -70,6 +70,10 @@ const [email, setEmail] = useState('');
             tituloTrofeu="123"
           />
           <MetaCard tituloMeta='123'/>
+
+          <ProximaAtividadeCard />
+
+          <MensalCard />
 
           
           
