@@ -1,26 +1,35 @@
-import { Image } from 'expo-image';
-import { SymbolView } from 'expo-symbols';
-import { Platform, Pressable, ScrollView, StyleSheet } from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { Platform, ScrollView, StyleSheet } from 'react-native';
 
-import { ExternalLink } from '@/components/external-link';
-import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
-import { Collapsible } from '@/components/ui/collapsible';
 import { WebBadge } from '@/components/web-badge';
-import { BottomTabInset, MaxContentWidth, Spacing } from '@/constants/theme';
-import { useTheme } from '@/hooks/use-theme';
+import { MaxContentWidth, Spacing } from '@/constants/theme';
+
+import { SafeAreaView } from 'react-native-safe-area-context';
+
+import HeaderAreaView from '../components/header-area-view';
+import { NotificationButton } from '../components/ui/NotificationButton';
+
+import { BottomTabInset } from '@/constants/theme';
+
 
 export default function AtividadesScreen() {
     return (
-         <ScrollView>
+      
+      <ThemedView style={styles.container}>
+        <SafeAreaView style={styles.safeArea}>
+          <HeaderAreaView
+                title="Suas atividades"
+                buttonIcon={
+                  <NotificationButton onPress={() => console.log('Notificações clicadas!')} />
+                }
+              />
+
+                <ScrollView>
       <ThemedView style={styles.container}>
         <ThemedView style={styles.titleContainer}>
-          <ThemedText type="subtitle">Explore</ThemedText>
-          <ThemedText style={styles.centerText} themeColor="textSecondary">
-                Exemplo texto
-          </ThemedText>
+          
 
+      
           
         </ThemedView>
 
@@ -32,10 +41,33 @@ export default function AtividadesScreen() {
         {Platform.OS === 'web' && <WebBadge />}
       </ThemedView>
     </ScrollView>
+
+        </SafeAreaView>
+      </ThemedView>
+
+      
+
+         
     );
 }
 
 const styles = StyleSheet.create({
+  
+    container: {
+      flex: 1,
+      justifyContent: 'center',
+      flexDirection: 'row',
+    },
+    safeArea: {
+      flex: 1,
+      paddingHorizontal: Spacing.four,
+      alignItems: 'center',
+      gap: Spacing.three,
+      paddingBottom: BottomTabInset + Spacing.three,
+      maxWidth: MaxContentWidth,
+    },
+  
+  
   scrollView: {
     flex: 1,
   },
@@ -43,10 +75,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'center',
   },
-  container: {
-    maxWidth: MaxContentWidth,
-    flexGrow: 1,
-  },
+  
   titleContainer: {
     gap: Spacing.three,
     alignItems: 'center',

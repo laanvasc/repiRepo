@@ -5,11 +5,29 @@
 
 import '@/global.css';
 
+import {
+  Inter_400Regular,
+  Inter_700Bold,
+  useFonts,
+} from '@expo-google-fonts/inter';
+
 import { Platform } from 'react-native';
+
+/**
+ * Hook personalizado para carregar as fontes Inter no topo do seu app (_layout.tsx ou App.tsx).
+ */
+export function useAppFonts() {
+  const [fontsLoaded] = useFonts({
+    Inter_400Regular,
+    Inter_700Bold,
+  });
+
+  return fontsLoaded;
+}
 
 export const Colors = {
   light: {
-    text: '#000000',
+    text: '#111827',
     background: '#ffffff',
     backgroundElement: '#F0F0F3',
     backgroundSelected: '#E0E1E6',
@@ -28,25 +46,24 @@ export type ThemeColor = keyof typeof Colors.light & keyof typeof Colors.dark;
 
 export const Fonts = Platform.select({
   ios: {
-    /** iOS `UIFontDescriptorSystemDesignDefault` */
-    sans: 'system-ui',
-    /** iOS `UIFontDescriptorSystemDesignSerif` */
+    sans: 'Inter_400Regular',
+    bold: 'Inter_700Bold',
     serif: 'ui-serif',
-    /** iOS `UIFontDescriptorSystemDesignRounded` */
-    rounded: 'ui-rounded',
-    /** iOS `UIFontDescriptorSystemDesignMonospaced` */
+    rounded: 'Inter_400Regular',
     mono: 'ui-monospace',
   },
   default: {
-    sans: 'normal',
+    sans: 'Inter_400Regular',
+    bold: 'Inter_700Bold',
     serif: 'serif',
-    rounded: 'normal',
+    rounded: 'Inter_400Regular',
     mono: 'monospace',
   },
   web: {
-    sans: 'var(--font-display)',
+    sans: 'Inter_400Regular, sans-serif',
+    bold: 'Inter_700Bold, sans-serif',
     serif: 'var(--font-serif)',
-    rounded: 'var(--font-rounded)',
+    rounded: 'Inter_400Regular, sans-serif',
     mono: 'var(--font-mono)',
   },
 });
