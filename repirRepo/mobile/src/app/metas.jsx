@@ -1,26 +1,30 @@
-import { Image } from 'expo-image';
-import { SymbolView } from 'expo-symbols';
-import { Platform, Pressable, ScrollView, StyleSheet } from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { Platform, ScrollView, StyleSheet } from 'react-native';
 
-import { ExternalLink } from '@/components/external-link';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
-import { Collapsible } from '@/components/ui/collapsible';
 import { WebBadge } from '@/components/web-badge';
-import { BottomTabInset, MaxContentWidth, Spacing } from '@/constants/theme';
-import { useTheme } from '@/hooks/use-theme';
+import { MaxContentWidth, Spacing } from '@/constants/theme';
+
+import MetaCard from '../components/ui/MetaCard';
+
+
 
 export default function MetaScreen() {
     return (
          <ScrollView>
       <ThemedView style={styles.container}>
         <ThemedView style={styles.titleContainer}>
-          <ThemedText type="subtitle">Explore</ThemedText>
+          <ThemedText type="subtitle">Metas</ThemedText>
           <ThemedText style={styles.centerText} themeColor="textSecondary">
             Exemplo Texto
           </ThemedText>
 
+          <ThemedView>
+            <MetaCard tituloMeta='Fazer 3 atividades' onPress={console.log("testando")}/>
+            <MetaCard tituloMeta='Fazer 3 atividades'/>
+            <MetaCard tituloMeta='Fazer 3 atividades'/>
+            <MetaCard tituloMeta='Fazer 3 atividades'/>
+          </ThemedView>
           
         </ThemedView>
 

@@ -11,10 +11,8 @@ import { useState } from 'react';
 
 import Button from '../components/ui/Button';
 import InputText from '../components/ui/InputText';
-import Trofeu from '../components/ui/Trofeu';
-import MetaCard from '../components/ui/MetaCard';
 import ProximaAtividadeCard from '../components/ui/ProximaAtividadeCard';
-import MensalCard from '../components/ui/MensalCard'; 
+import Trofeu from '../components/ui/Trofeu';
 
 
 // function getDevMenuHint() {
@@ -59,7 +57,7 @@ export default function HomeScreen() {
           onPress={()=> console.log("testando")}
           />
           <InputText 
-            label="E-mail"
+            label="Email"
             placeholder="seuemail@exemplo.com"
             keyboardType="email-address"
             autoCapitalize="none"
@@ -69,11 +67,9 @@ export default function HomeScreen() {
           <Trofeu
             tituloTrofeu="123"
           />
-          <MetaCard tituloMeta='123'/>
 
           <ProximaAtividadeCard />
 
-          <MensalCard />
 
           
           

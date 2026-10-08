@@ -1,8 +1,9 @@
 import {
-  useFonts,
   Inter_400Regular,
   Inter_700Bold,
+  useFonts,
 } from '@expo-google-fonts/inter';
+
 import { StyleSheet, Text, View } from 'react-native';
 import Svg, { Circle, Line, Path } from 'react-native-svg';
 
