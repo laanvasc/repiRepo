@@ -1,82 +1,67 @@
-import { Platform, StyleSheet } from 'react-native';
+import { useState } from 'react';
+import { Platform, ScrollView, StyleSheet } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-import { AnimatedIcon } from '@/components/animated-icon';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { WebBadge } from '@/components/web-badge';
 import { BottomTabInset, MaxContentWidth, Spacing } from '@/constants/theme';
 
-import { useState } from 'react';
-
+import HeaderAreaView from '../components/header-area-view';
 import Button from '../components/ui/Button';
 import InputText from '../components/ui/InputText';
+import { NotificationButton } from '../components/ui/NotificationButton';
 import ProximaAtividadeCard from '../components/ui/ProximaAtividadeCard';
 import Trofeu from '../components/ui/Trofeu';
 
-
-// function getDevMenuHint() {
-//   if (Platform.OS === 'web') {
-//     return <ThemedText type="small">use browser devtools</ThemedText>;
-//   }
-//   if (Device.isDevice) {
-//     return (
-//       <ThemedText type="small">
-//         shake device or press <ThemedText type="code">m</ThemedText> in terminal
-//       </ThemedText>
-//     );
-//   }
-//   const shortcut = Platform.OS === 'android' ? 'cmd+m (or ctrl+m)' : 'cmd+d';
-//   return (
-//     <ThemedText type="small">
-//       press <ThemedText type="code">{shortcut}</ThemedText>
-//     </ThemedText>
-//   );
-// }
-
 export default function HomeScreen() {
-
   const [email, setEmail] = useState('');
   const [senha, setSenha] = useState('');
 
   return (
     <ThemedView style={styles.container}>
       <SafeAreaView style={styles.safeArea}>
-        <ThemedView style={styles.heroSection}>
-          {/* coloque o icnoe aqyuio */}
-          <AnimatedIcon /> 
-          <ThemedText type="title" style={styles.title}>
-            texto
+        <ScrollView 
+          style={styles.scrollView}
+          contentContainerStyle={styles.scrollContent}
+          showsVerticalScrollIndicator={false}
+        >
+          {/* Header dentro do ScrollView para rolar junto com a página */}
+          <HeaderAreaView 
+            title="Olá, João!" 
+            subtitle="Pronto para sua próxima meta?"
+            buttonIcon={
+              <NotificationButton onPress={() => console.log('Notificações clicadas!')} />
+            }
+          />
+
+          <ThemedView style={styles.heroSection}>
+            {/* Conteúdo hero */}
+          </ThemedView>
+
+          <ThemedText type="code" style={styles.code}>
+            <Button
+              titulo="textotexto"
+              onPress={() => console.log("testando")}
+            />
+            <InputText 
+              label="Email"
+              placeholder="seuemail@exemplo.com"
+              keyboardType="email-address"
+              autoCapitalize="none"
+              value={email}
+              onChangeText={setEmail}
+            />
+            
+            <ProximaAtividadeCard />
           </ThemedText>
-        </ThemedView>
 
-        <ThemedText type="code" style={styles.code}>
-          <Button
-          titulo="textotexto"
-          
-          onPress={()=> console.log("testando")}
-          />
-          <InputText 
-            label="Email"
-            placeholder="seuemail@exemplo.com"
-            keyboardType="email-address"
-            autoCapitalize="none"
-            value={email}
-            onChangeText={setEmail}
-          />
-          <Trofeu
-            tituloTrofeu="123"
-          />
+          <Trofeu tituloTrofeu="123" />
+          <Trofeu tituloTrofeu="123" />
+          <Trofeu tituloTrofeu="123" />
 
-          <ProximaAtividadeCard />
-
-
-          
-          
-        </ThemedText>
-
-
-        {Platform.OS === 'web' && <WebBadge />}
+          {Platform.OS === 'web' && <WebBadge />}
+        </ScrollView>
       </SafeAreaView>
     </ThemedView>
   );
@@ -85,35 +70,31 @@ export default function HomeScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    justifyContent: 'center',
-    flexDirection: 'row',
   },
   safeArea: {
     flex: 1,
-    paddingHorizontal: Spacing.four,
-    alignItems: 'center',
-    gap: Spacing.three,
-    paddingBottom: BottomTabInset + Spacing.three,
+    width: '100%',
     maxWidth: MaxContentWidth,
+    alignSelf: 'center',
+  },
+  scrollView: {
+    flex: 1,
+    width: '100%',
+  },
+  scrollContent: {
+    paddingHorizontal: Spacing.four, // Garante as margens laterais uniformes para todo o conteúdo (inclusive o header)
+    paddingTop: Spacing.two,
+    paddingBottom: BottomTabInset + Spacing.three,
+    gap: Spacing.three,
   },
   heroSection: {
     alignItems: 'center',
     justifyContent: 'center',
-    flex: 1,
     paddingHorizontal: Spacing.four,
     gap: Spacing.four,
   },
-  title: {
-    textAlign: 'center',
-  },
   code: {
     textTransform: 'uppercase',
-  },
-  stepContainer: {
     gap: Spacing.three,
-    alignSelf: 'stretch',
-    paddingHorizontal: Spacing.three,
-    paddingVertical: Spacing.four,
-    borderRadius: Spacing.four,
   },
 });

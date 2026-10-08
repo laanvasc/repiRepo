@@ -10,19 +10,19 @@ export default function AppTabs() {
   return (
     <NativeTabs
       backgroundColor={colors.background}
-      indicatorColor={colors.backgroundElement}
-      // Ajuste de cores da label ativa/inativa
+      // Remove o fundo/pílula de destaque do Android
+      indicatorColor="transparent"
+      // Define a cor do ícone ativo (substitui o accentColor que não existe na interface)
+      tintColor="#FF5733"
       labelStyle={{
-        selected: { color: '#FF5733' }, // Cor ativa da imagem
+        selected: { color: '#FF5733' }, // Cor ativa da legenda
         default: { color: '#8E8E93' },  // Cor inativa
       }}
-      // Estilo de tint dos ícones nativos
-      tintColor="#FF5733"
     >
       <NativeTabs.Trigger name="index">
         <NativeTabs.Trigger.Label>Início</NativeTabs.Trigger.Label>
         <NativeTabs.Trigger.Icon
-          src={require('@/assets/images/tabIcons/home.png')}
+          src={require('../../assets/images/tabIcons/icone_home3x.png')}
           renderingMode="template"
         />
       </NativeTabs.Trigger>
@@ -30,7 +30,7 @@ export default function AppTabs() {
       <NativeTabs.Trigger name="atividades">
         <NativeTabs.Trigger.Label>Atividades</NativeTabs.Trigger.Label>
         <NativeTabs.Trigger.Icon
-          src={require('@/assets/images/tabIcons/home.png')} // Atualize a imagem aqui se tiver
+          src={require('../../assets/images/tabIcons/icone_atividades3x.png')}
           renderingMode="template"
         />
       </NativeTabs.Trigger>
@@ -38,7 +38,7 @@ export default function AppTabs() {
       <NativeTabs.Trigger name="metas">
         <NativeTabs.Trigger.Label>Metas</NativeTabs.Trigger.Label>
         <NativeTabs.Trigger.Icon
-          src={require('@/assets/images/tabIcons/home.png')} // Atualize a imagem aqui se tiver
+          src={require('../../assets/images/tabIcons/icone_metas3x.png')}
           renderingMode="template"
         />
       </NativeTabs.Trigger>
@@ -46,16 +46,10 @@ export default function AppTabs() {
       <NativeTabs.Trigger name="perfil">
         <NativeTabs.Trigger.Label>Perfil</NativeTabs.Trigger.Label>
         <NativeTabs.Trigger.Icon
-          src={require('@/assets/images/tabIcons/home.png')} // Atualize a imagem aqui se tiver
+          src={require('../../assets/images/tabIcons/icone_perfil3x.png')}
           renderingMode="template"
         />
       </NativeTabs.Trigger>
-
-      {/* 
-        NOTA: Não declare um <NativeTabs.Trigger name="(auth)" /> aqui.
-        Por padrão, o NativeTabs ignora rotas não declaradas nos triggers,
-        então (auth) não aparecerá na barra inferior!
-      */}
     </NativeTabs>
   );
 }

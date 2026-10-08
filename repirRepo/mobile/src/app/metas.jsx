@@ -1,94 +1,88 @@
 import { Platform, ScrollView, StyleSheet } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { WebBadge } from '@/components/web-badge';
-import { MaxContentWidth, Spacing } from '@/constants/theme';
 
+import HeaderAreaView from '../components/header-area-view';
 import MetaCard from '../components/ui/MetaCard';
+import { NotificationButton } from '../components/ui/NotificationButton';
 
-
+import { BottomTabInset, MaxContentWidth, Spacing } from '@/constants/theme';
 
 export default function MetaScreen() {
-    return (
-         <ScrollView>
-      <ThemedView style={styles.container}>
-        <ThemedView style={styles.titleContainer}>
-          <ThemedText type="subtitle">Metas</ThemedText>
-          <ThemedText style={styles.centerText} themeColor="textSecondary">
-            Exemplo Texto
-          </ThemedText>
+  return (
+    <ThemedView style={styles.container}>
+      <SafeAreaView style={styles.safeArea}>
+        {/* Header Fixo no topo */}
+        <HeaderAreaView
+          title="Metas"
+          subtitle="Acompanhe o seu progresso diário"
+          buttonIcon={
+            <NotificationButton onPress={() => console.log('Notificações clicadas!')} />
+          }
+        />
 
-          <ThemedView>
-            <MetaCard tituloMeta='Fazer 3 atividades' onPress={console.log("testando")}/>
-            <MetaCard tituloMeta='Fazer 3 atividades'/>
-            <MetaCard tituloMeta='Fazer 3 atividades'/>
-            <MetaCard tituloMeta='Fazer 3 atividades'/>
+        <ScrollView 
+          contentContainerStyle={styles.scrollContent}
+          showsVerticalScrollIndicator={false}
+        >
+          <ThemedView style={styles.titleContainer}>
+            <ThemedText style={styles.centerText} themeColor="textSecondary">
+              Exemplo Texto
+            </ThemedText>
+
+            <ThemedView style={styles.cardsContainer}>
+              <MetaCard 
+                tituloMeta="Fazer 3 atividades" 
+                onPress={() => console.log("testando")} 
+              />
+              <MetaCard tituloMeta="Fazer 3 atividades" />
+              <MetaCard tituloMeta="Fazer 3 atividades" />
+              <MetaCard tituloMeta="Fazer 3 atividades" />
+            </ThemedView>
           </ThemedView>
-          
-        </ThemedView>
 
-        <ThemedView style={styles.sectionsWrapper}>
-          
+          <ThemedView style={styles.sectionsWrapper}>
+            {/* Outras seções se necessário */}
+          </ThemedView>
 
-          
-        </ThemedView>
-        {Platform.OS === 'web' && <WebBadge />}
-      </ThemedView>
-    </ScrollView>
-    );
+          {Platform.OS === 'web' && <WebBadge />}
+        </ScrollView>
+      </SafeAreaView>
+    </ThemedView>
+  );
 }
 
 const styles = StyleSheet.create({
-  scrollView: {
-    flex: 1,
-  },
-  contentContainer: {
-    flexDirection: 'row',
-    justifyContent: 'center',
-  },
   container: {
-    maxWidth: MaxContentWidth,
-    flexGrow: 1,
+      flex: 1,
+      justifyContent: 'center',
+      flexDirection: 'row',
+    },
+    safeArea: {
+      flex: 1,
+      paddingHorizontal: Spacing.four,
+      alignItems: 'center',
+      gap: Spacing.three,
+      paddingBottom: BottomTabInset + Spacing.three,
+      maxWidth: MaxContentWidth,
+    },
+  scrollContent: {
+    paddingHorizontal: 16,
+    paddingVertical: 12,
   },
   titleContainer: {
-    gap: Spacing.three,
-    alignItems: 'center',
-    paddingHorizontal: Spacing.four,
-    paddingVertical: Spacing.six,
+    gap: 8,
   },
   centerText: {
-    textAlign: 'center',
+    marginBottom: 12,
   },
-  pressed: {
-    opacity: 0.7,
-  },
-  linkButton: {
-    flexDirection: 'row',
-    paddingHorizontal: Spacing.four,
-    paddingVertical: Spacing.two,
-    borderRadius: Spacing.five,
-    justifyContent: 'center',
-    gap: Spacing.one,
-    alignItems: 'center',
+  cardsContainer: {
+    gap: 12,
   },
   sectionsWrapper: {
-    gap: Spacing.five,
-    paddingHorizontal: Spacing.four,
-    paddingTop: Spacing.three,
-  },
-  collapsibleContent: {
-    alignItems: 'center',
-  },
-  imageTutorial: {
-    width: '100%',
-    aspectRatio: 296 / 171,
-    borderRadius: Spacing.three,
-    marginTop: Spacing.two,
-  },
-  imageReact: {
-    width: 100,
-    height: 100,
-    alignSelf: 'center',
+    marginTop: 16,
   },
 });

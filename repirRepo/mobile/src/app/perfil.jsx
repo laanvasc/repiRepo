@@ -1,22 +1,37 @@
 import { Platform, ScrollView, StyleSheet } from 'react-native';
 
-import { ThemedText } from '@/components/themed-text';
-import { ThemedView } from '@/components/themed-view';
+import { SafeAreaView } from 'react-native-safe-area-context';
+
+import HeaderAreaView from '../components/header-area-view';
+import { NotificationButton } from '../components/ui/NotificationButton';
+
 import { WebBadge } from '@/components/web-badge';
-import { MaxContentWidth, Spacing } from '@/constants/theme';
+import { BottomTabInset, MaxContentWidth, Spacing } from '@/constants/theme';
+
+import { ThemedView } from '@/components/themed-view';
 
 import MensalCard from '../components/ui/MensalCard';
 
 
 export default function PerfilScreen() {
     return (
+
+          <ThemedView style={styles.container}>
+      <SafeAreaView style={styles.safeArea}>
+          <HeaderAreaView 
+                    title="Meu Perfil" 
+                    // aqui vai ficar um tres botões de configuração
+                    buttonIcon={
+                      <NotificationButton onPress={() => console.log('Notificações clicadas!')} />
+                    }
+                  />      
          <ScrollView>
+
+      
+
       <ThemedView style={styles.container}>
         <ThemedView style={styles.titleContainer}>
-          <ThemedText type="subtitle">Meu Perfil</ThemedText>
-          <ThemedText style={styles.centerText} themeColor="textSecondary">
-            Exemplo Texto
-          </ThemedText>
+          
 
           
         </ThemedView>
@@ -34,10 +49,28 @@ export default function PerfilScreen() {
         {Platform.OS === 'web' && <WebBadge />}
       </ThemedView>
     </ScrollView>
+    </SafeAreaView>
+    </ThemedView>
     );
 }
 
 const styles = StyleSheet.create({
+   container: {
+    flex: 1,
+    justifyContent: 'center',
+    flexDirection: 'row',
+  },
+
+  safeArea: {
+    flex: 1,
+    paddingHorizontal: Spacing.four,
+    alignItems: 'center',
+    gap: Spacing.three,
+    paddingBottom: BottomTabInset + Spacing.three,
+    maxWidth: MaxContentWidth,
+  },
+  
+
   scrollView: {
     flex: 1,
   },
