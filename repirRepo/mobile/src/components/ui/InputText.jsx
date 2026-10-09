@@ -1,7 +1,8 @@
 import { useState } from 'react';
 import { StyleSheet, Text, TextInput, View } from 'react-native';
 
-export default function InputText({ label, error = null, ...props }) {
+/** @param {{ label?: string, error?: string | null, inputStyle?: import('react-native').StyleProp<import('react-native').TextStyle>, [key: string]: any }} props */
+export default function InputText({ label, error, inputStyle = null, ...props }) {
   const [isFocused, setIsFocused] = useState(false);
 
   return (
@@ -13,7 +14,8 @@ export default function InputText({ label, error = null, ...props }) {
         style={[
           styles.input,
           isFocused && styles.inputFocused,
-          error && styles.inputError
+          error && styles.inputError,
+          inputStyle
         ]}
         onFocus={() => setIsFocused(true)}
         onBlur={() => setIsFocused(false)}

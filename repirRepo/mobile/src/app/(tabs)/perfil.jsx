@@ -2,15 +2,15 @@ import { Platform, ScrollView, StyleSheet } from 'react-native';
 
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-import HeaderAreaView from '../components/header-area-view';
-import { NotificationButton } from '../components/ui/NotificationButton';
+import HeaderAreaView from '../../components/header-area-view';
+import { NotificationButton } from '../../components/ui/NotificationButton';
 
 import { WebBadge } from '@/components/web-badge';
 import { BottomTabInset, MaxContentWidth, Spacing } from '@/constants/theme';
 
 import { ThemedView } from '@/components/themed-view';
 
-import MensalCard from '../components/ui/MensalCard';
+import MensalCard from '../../components/ui/MensalCard';
 
 
 export default function PerfilScreen() {

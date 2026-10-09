@@ -5,9 +5,9 @@ import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { WebBadge } from '@/components/web-badge';
 
-import HeaderAreaView from '../components/header-area-view';
-import MetaCard from '../components/ui/MetaCard';
-import { NotificationButton } from '../components/ui/NotificationButton';
+import HeaderAreaView from '../../components/header-area-view';
+import MetaCard from '../../components/ui/MetaCard';
+import { NotificationButton } from '../../components/ui/NotificationButton';
 
 import { BottomTabInset, MaxContentWidth, Spacing } from '@/constants/theme';
 
