@@ -1,7 +1,7 @@
  import {
-  useFonts,
   Inter_600SemiBold,
   Inter_700Bold,
+  useFonts,
 } from '@expo-google-fonts/inter';
 import { Image } from 'expo-image';
 import { StyleSheet, Text, View } from 'react-native';
@@ -47,7 +47,7 @@ export default function ProximaAtividadeCard() {
 
 const styles = StyleSheet.create({
   card: {
-    width: 370,
+    width: 420,
     height: 126,
     backgroundColor: '#FFB4ED',
     borderRadius: 16,

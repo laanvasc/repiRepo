@@ -1,76 +1,66 @@
-import React from 'react';
 import { ActivityIndicator, Image, StyleSheet, Text, View } from 'react-native';
 
-export default function Trofeu({
-  tituloTrofeu,
-  variante = 'bronzeVerde',
+// Importação direta de um ícone genérico/padrão para o fallback
+import trofeuPadrao from '../assets/trofeus/trofeu1.png';
+
+export function Trofeu({
+  tituloTrofeu = 'Primeiro Passo',
   disabled = false,
   isLoading = false,
-  iconeTrofeu = null, // Prop opcional
+  iconeTrofeu = null,
 }) {
   return (
-    <View
-      style={[
-        styles.baseTrofeu,
-        styles[`${variante}Trofeu`],
-        disabled && styles.disabledTrofeu,
-      ]}
-    >
+    <View style={[styles.card, disabled && styles.cardDisabled]}>
       <Image
-        source={iconeTrofeu || require('../assets/trofeus/trofeu3 1.png')}
-        style={[styles.trofeuIcon, disabled && styles.disabledIcon]}
+        source={iconeTrofeu || trofeuPadrao}
+        style={[styles.trofeuIcon, disabled && styles.iconDisabled]}
         resizeMode="contain"
       />
 
       {isLoading ? (
         <ActivityIndicator color="#FFFFFF" />
       ) : (
-        <Text style={[styles.baseText, disabled && styles.disabledText]}>
-          {tituloTrofeu}
-        </Text>
+        <Text style={styles.titleText}>{tituloTrofeu}</Text>
       )}
     </View>
   );
 }
 
+export default Trofeu;
+
 const styles = StyleSheet.create({
-  baseTrofeu: {
-    width: 160,
-    height: 160,
+  card: {
+    width: '48%', // Usa largura percentual para se ajustar perfeito na grid de 2 colunas
+    aspectRatio: 1, // Mantém o formato quadrado proporcional
     backgroundColor: '#FF5252',
-    borderRadius: 24,
-    padding: 16,
+    borderRadius: 20,
+    padding: 12,
     alignItems: 'center',
     justifyContent: 'center',
     borderWidth: 2,
     borderColor: 'transparent',
   },
 
-  disabledTrofeu: {
-    backgroundColor: '#FFA8A8',
-    borderStyle: 'dashed',
+  cardDisabled: {
+    backgroundColor: '#FF9E9E',
     borderColor: '#FF5252',
+    borderStyle: 'dashed',
   },
 
   trofeuIcon: {
-    width: 80,
-    height: 80,
-    marginBottom: 12,
+    width: 68,
+    height: 68,
+    marginBottom: 8,
   },
 
-  disabledIcon: {
-    opacity: 0.6,
+  iconDisabled: {
+    opacity: 0.7,
   },
 
-  baseText: {
+  titleText: {
     color: '#FFFFFF',
-    fontSize: 16,
-    fontWeight: 'bold',
+    fontSize: 14,
+    fontWeight: '800',
     textAlign: 'center',
-  },
-
-  disabledText: {
-    color: '#FFFFFF',
-    opacity: 0.9,
   },
 });

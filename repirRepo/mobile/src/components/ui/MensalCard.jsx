@@ -1,8 +1,9 @@
 import {
-  useFonts,
   Inter_400Regular,
   Inter_700Bold,
+  useFonts,
 } from '@expo-google-fonts/inter';
+
 import { StyleSheet, Text, View } from 'react-native';
 import Svg, { Circle, Line, Path } from 'react-native-svg';
 
@@ -10,8 +11,8 @@ const ORANGE = '#EE6C42';
 const PINK = '#F0B4A4';
 const LIME = '#DCEB52';
 
-// 5 semanas precisam de mais altura que as 4 do Figma (284)
-const CARD_HEIGHT = 318;
+// Altura reduzida de 318 para 250
+const CARD_HEIGHT = 250;
 
 // Outubro de 2026 começa numa quinta-feira
 const weeks = [
@@ -44,13 +45,19 @@ export default function MensalCard() {
   return (
     <View style={styles.card}>
       {/* ONDAS DE FUNDO */}
-      <Svg width={370} height={CARD_HEIGHT} style={StyleSheet.absoluteFill}>
-        {/* onda superior (atrás do título) */}
+      <Svg
+        width="100%"
+        height="100%"
+        viewBox="0 0 370 318"
+        preserveAspectRatio="none"
+        style={StyleSheet.absoluteFill}
+      >
+        {/* onda superior */}
         <Path
           d="M0 0 H370 V64 C300 64 250 20 190 20 C130 20 80 62 0 62 Z"
           fill={PINK}
         />
-        {/* faixa do meio (atrás dos dias) */}
+        {/* faixa do meio */}
         <Path
           d="M0 145 C70 145 130 102 193 102 C255 102 300 145 370 145
              V237 C300 237 255 195 193 195 C130 195 70 237 0 237 Z"
@@ -63,7 +70,7 @@ export default function MensalCard() {
 
       {/* COMPARTILHAR */}
       <View style={styles.share}>
-        <Svg width={28} height={28} viewBox="0 0 24 24">
+        <Svg width={22} height={22} viewBox="0 0 24 24">
           <Line x1="7.3" y1="11" x2="16.7" y2="7" stroke="#FFFFFF" strokeWidth="2" />
           <Line x1="7.3" y1="13" x2="16.7" y2="17" stroke="#FFFFFF" strokeWidth="2" />
           <Circle cx="5" cy="12" r="2.8" fill="none" stroke="#FFFFFF" strokeWidth="2" />
@@ -73,12 +80,12 @@ export default function MensalCard() {
       </View>
 
       {/* ESTATÍSTICAS */}
-      <View style={[styles.stat, { left: 22 }]}>
+      <View style={[styles.stat, { left: 16 }]}>
         <Text style={styles.statLabel}>Ofensiva</Text>
         <Text style={styles.statValue}>13 dias</Text>
       </View>
 
-      <View style={[styles.stat, { left: 125 }]}>
+      <View style={[styles.stat, { left: 110 }]}>
         <Text style={styles.statLabel}>Concluídas</Text>
         <Text style={styles.statValue}>350 atividades</Text>
       </View>
@@ -124,58 +131,55 @@ export default function MensalCard() {
 
 const styles = StyleSheet.create({
   card: {
-    width: 370,
+    width: '100%',
     height: CARD_HEIGHT,
     backgroundColor: ORANGE,
-    borderRadius: 24,
+    borderRadius: 20,
     overflow: 'hidden',
   },
 
   title: {
     position: 'absolute',
-    left: 22,
-    top: 19,
+    left: 16,
+    top: 12,
     fontFamily: 'Inter_700Bold',
-    fontSize: 20,
-    lineHeight: 26,
+    fontSize: 16,
+    lineHeight: 20,
     color: '#FFFFFF',
-    textTransform: 'none',
   },
 
   share: {
     position: 'absolute',
-    right: 20,
-    top: 20,
-    width: 28,
-    height: 28,
+    right: 14,
+    top: 12,
+    width: 22,
+    height: 22,
     alignItems: 'center',
     justifyContent: 'center',
   },
 
   stat: {
     position: 'absolute',
-    top: 57,
+    top: 42,
   },
 
   statLabel: {
     fontFamily: 'Inter_400Regular',
-    fontSize: 15,
-    lineHeight: 19,
+    fontSize: 12,
+    lineHeight: 15,
     color: '#FFFFFF',
-    textTransform: 'none',
   },
 
   statValue: {
     fontFamily: 'Inter_700Bold',
-    fontSize: 16,
-    lineHeight: 20,
+    fontSize: 13,
+    lineHeight: 16,
     color: '#FFFFFF',
-    textTransform: 'none',
   },
 
   weekHeader: {
     position: 'absolute',
-    top: 113,
+    top: 86,
     left: 3,
     right: 3,
     flexDirection: 'row',
@@ -183,22 +187,22 @@ const styles = StyleSheet.create({
 
   weekDay: {
     fontFamily: 'Inter_400Regular',
-    fontSize: 16,
-    lineHeight: 20,
+    fontSize: 13,
+    lineHeight: 16,
     color: '#FFFFFF',
     textAlign: 'center',
   },
 
   calendar: {
     position: 'absolute',
-    top: 138,
+    top: 108,
     left: 3,
     right: 3,
   },
 
   weekRow: {
     flexDirection: 'row',
-    marginBottom: 8,
+    marginBottom: 5,
   },
 
   column: {
@@ -207,9 +211,9 @@ const styles = StyleSheet.create({
   },
 
   day: {
-    width: 18,
-    height: 26,
-    borderRadius: 11,
+    width: 15,
+    height: 22,
+    borderRadius: 8,
     alignItems: 'center',
     justifyContent: 'center',
     backgroundColor: '#FFFFFF',
@@ -225,10 +229,9 @@ const styles = StyleSheet.create({
 
   dayText: {
     fontFamily: 'Inter_700Bold',
-    fontSize: 11,
-    lineHeight: 13,
+    fontSize: 9,
+    lineHeight: 11,
     color: ORANGE,
-    textTransform: 'none',
     includeFontPadding: false,
   },
 });
