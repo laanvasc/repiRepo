@@ -51,7 +51,6 @@ export default CardProgressoSemanal;
 const styles = StyleSheet.create({
   card: {
     width: '100%',
-    backgroundColor: '#FAF5FC',
     borderRadius: 24,
     paddingVertical: 18,
     paddingHorizontal: 16,

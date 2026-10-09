@@ -47,7 +47,7 @@ export default function ProximaAtividadeCard() {
 
 const styles = StyleSheet.create({
   card: {
-    width: 370,
+    width: 420,
     height: 126,
     backgroundColor: '#FFB4ED',
     borderRadius: 16,
