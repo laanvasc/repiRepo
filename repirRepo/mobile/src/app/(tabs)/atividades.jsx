@@ -6,8 +6,8 @@ import { MaxContentWidth, Spacing } from '@/constants/theme';
 
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-import HeaderAreaView from '../components/header-area-view';
-import { NotificationButton } from '../components/ui/NotificationButton';
+import HeaderAreaView from '@/components/header-area-view';
+import { NotificationButton } from '@/components/ui/NotificationButton';
 
 import { BottomTabInset } from '@/constants/theme';
 

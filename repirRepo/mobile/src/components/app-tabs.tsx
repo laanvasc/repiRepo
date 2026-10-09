@@ -19,7 +19,7 @@ export default function AppTabs() {
         default: { color: '#8E8E93' },  // Cor inativa
       }}
     >
-      <NativeTabs.Trigger name="index">
+      <NativeTabs.Trigger name="home">
         <NativeTabs.Trigger.Label>Início</NativeTabs.Trigger.Label>
         <NativeTabs.Trigger.Icon
           src={require('../../assets/images/tabIcons/icone_home3x.png')}
