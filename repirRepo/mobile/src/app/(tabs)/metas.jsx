@@ -7,7 +7,6 @@ import { WebBadge } from '@/components/web-badge';
 
 import HeaderAreaView from '../../components/header-area-view';
 import MetaCard from '../../components/ui/MetaCard';
-import { NotificationButton } from '../../components/ui/NotificationButton';
 
 import { BottomTabInset, MaxContentWidth, Spacing } from '@/constants/theme';
 
@@ -19,9 +18,7 @@ export default function MetaScreen() {
         <HeaderAreaView
           title="Metas"
           subtitle="Acompanhe o seu progresso diário"
-          buttonIcon={
-            <NotificationButton onPress={() => console.log('Notificações clicadas!')} />
-          }
+          
         />
 
         <ScrollView 

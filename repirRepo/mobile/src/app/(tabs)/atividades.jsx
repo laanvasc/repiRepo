@@ -1,119 +1,104 @@
+import { Image } from 'expo-image';
 import { Platform, ScrollView, StyleSheet } from 'react-native';
-
-import { ThemedView } from '@/components/themed-view';
-import { WebBadge } from '@/components/web-badge';
-import { MaxContentWidth, Spacing } from '@/constants/theme';
-
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-import HeaderAreaView from '../../components/header-area-view';
-import { NotificationButton } from '../../components/ui/NotificationButton';
+import HeaderAreaView from '@/components/header-area-view';
+import { ThemedView } from '@/components/themed-view';
+import CardAtividade from '@/components/ui/CardAtividade';
+import { NotificationButton } from '@/components/ui/NotificationButton';
+import { WebBadge } from '@/components/web-badge';
 
-import { BottomTabInset } from '@/constants/theme';
+import Button from '@/components/ui/Button';
 
+import { BottomTabInset, MaxContentWidth, Spacing } from '@/constants/theme';
 
 export default function AtividadesScreen() {
-    return (
-      
-      <ThemedView style={styles.container}>
-        <SafeAreaView style={styles.safeArea}>
-          <HeaderAreaView
-                title="Suas atividades"
-                buttonIcon={
-                  <NotificationButton onPress={() => console.log('Notificações clicadas!')} />
-                }
-              />
+  return (
+    <ThemedView style={styles.container}>
+      {/* Imagem de Fundo da Tela */}
+      <Image
+        source={require('@/components/assets/fundos/fundo-onda1-rosa.png')}
+        style={StyleSheet.absoluteFillObject}
+        contentFit="cover"
+      />
 
-                <ScrollView>
-      <ThemedView style={styles.container}>
-        <ThemedView style={styles.titleContainer}>
-          
+      <SafeAreaView style={styles.safeArea}>
+        {/* Header Fixo */}
+        <HeaderAreaView
+          title="Suas atividades"
+          buttonIcon={
+            <NotificationButton
+              onPress={() => console.log('Notificações clicadas!')}
+            />
+          }
+        />
 
-      
-          
-        </ThemedView>
+        {/* Conteúdo com Scroll */}
+        <ScrollView
+          style={styles.scroll}
+          contentContainerStyle={styles.scrollContent}
+          showsVerticalScrollIndicator={false}
+        >
+          <ThemedView style={styles.cardsContainer}>
+            {/* Lista de Exemplo de Cards com as Variações */}
+            <CardAtividade
+              titulo="Treino Abdominal"
+              categoria="Corrida"
+              concluido={true}
+            />
+            <CardAtividade
+              titulo="Treino de Peito"
+              categoria="Musculação"
+              concluido={true}
+            />
+            <CardAtividade
+              titulo="Esteira"
+              categoria="Musculação"
+              concluido={false}
+            />
+          </ThemedView>
+          <ThemedView>
+            <Button titulo="Finalizar atividades diárias"/>
+          </ThemedView>
 
-        <ThemedView style={styles.sectionsWrapper}>
-          
+          <ThemedView style={styles.sectionsWrapper}>
+            {/* Outras seções se necessário */}
+          </ThemedView>
 
-          
-        </ThemedView>
-        {Platform.OS === 'web' && <WebBadge />}
-      </ThemedView>
-    </ScrollView>
-
-        </SafeAreaView>
-      </ThemedView>
-
-      
-
-         
-    );
+          {Platform.OS === 'web' && <WebBadge />}
+        </ScrollView>
+      </SafeAreaView>
+    </ThemedView>
+  );
 }
 
 const styles = StyleSheet.create({
-  
-    container: {
-      flex: 1,
-      justifyContent: 'center',
-      flexDirection: 'row',
-    },
-    safeArea: {
-      flex: 1,
-      paddingHorizontal: Spacing.four,
-      alignItems: 'center',
-      gap: Spacing.three,
-      paddingBottom: BottomTabInset + Spacing.three,
-      maxWidth: MaxContentWidth,
-    },
-  
-  
-  scrollView: {
+  container: {
     flex: 1,
-  },
-  contentContainer: {
-    flexDirection: 'row',
     justifyContent: 'center',
+    flexDirection: 'row',
   },
-  
-  titleContainer: {
+  safeArea: {
+    flex: 1,
+    paddingHorizontal: Spacing.four,
+    alignItems: 'center',
     gap: Spacing.three,
-    alignItems: 'center',
-    paddingHorizontal: Spacing.four,
-    paddingVertical: Spacing.six,
+    paddingBottom: BottomTabInset + Spacing.three,
+    maxWidth: MaxContentWidth,
   },
-  centerText: {
-    textAlign: 'center',
+  scroll: {
+    width: '100%',
   },
-  pressed: {
-    opacity: 0.7,
-  },
-  linkButton: {
-    flexDirection: 'row',
-    paddingHorizontal: Spacing.four,
+  scrollContent: {
     paddingVertical: Spacing.two,
-    borderRadius: Spacing.five,
-    justifyContent: 'center',
-    gap: Spacing.one,
-    alignItems: 'center',
+  },
+  cardsContainer: {
+    gap: Spacing.two,
+    backgroundColor: 'transparent',
   },
   sectionsWrapper: {
     gap: Spacing.five,
-    paddingHorizontal: Spacing.four,
     paddingTop: Spacing.three,
-  },
-  collapsibleContent: {
-    alignItems: 'center',
-  },
-  imageTutorial: {
-    width: '100%',
-    aspectRatio: 296 / 171,
-    borderRadius: Spacing.three,
-    marginTop: Spacing.two,
-  },
-  imageReact: {
-    width: 100,
-    height: 100,
-    alignSelf: 'center',
+    backgroundColor: 'transparent',
   },
 });

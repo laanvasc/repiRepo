@@ -8,11 +8,14 @@ import { WebBadge } from '@/components/web-badge';
 import { BottomTabInset, MaxContentWidth, Spacing } from '@/constants/theme';
 
 import HeaderAreaView from '@/components/header-area-view';
-import Button from '@/components/ui/Button';
-import InputText from '@/components/ui/InputText';
 import { NotificationButton } from '@/components/ui/NotificationButton';
 import ProximaAtividadeCard from '@/components/ui/ProximaAtividadeCard';
-import Trofeu from '@/components/ui/Trofeu';
+
+import { CardConquistasDesbloqueadas } from '../../components/ui/CardConquistasDesbloqueadas';
+import CardDestaquesSemanas from '../../components/ui/CardDestaquesSemana';
+import CardOfensiva from '../../components/ui/CardOfensiva';
+import CardProgressoSemanal from '../../components/ui/CardProgressoSemana';
+import CardSemanaQuantAtividades from '../../components/ui/CardSemanaQuantAtividades';
 
 export default function HomeScreen() {
   const [email, setEmail] = useState('');
@@ -40,25 +43,23 @@ export default function HomeScreen() {
           </ThemedView>
 
           <ThemedText type="code" style={styles.code}>
-            <Button
-              titulo="textotexto"
-              onPress={() => console.log("testando")}
-            />
-            <InputText 
-              label="Email"
-              placeholder="seuemail@exemplo.com"
-              keyboardType="email-address"
-              autoCapitalize="none"
-              value={email}
-              onChangeText={setEmail}
-            />
+            
+            
+
+            <CardOfensiva/>
+
+            <CardSemanaQuantAtividades/>
+
+            <CardProgressoSemanal/>
             
             <ProximaAtividadeCard />
+
+            <CardConquistasDesbloqueadas/>
+
+            <CardDestaquesSemanas/>
           </ThemedText>
 
-          <Trofeu tituloTrofeu="123" />
-          <Trofeu tituloTrofeu="123" />
-          <Trofeu tituloTrofeu="123" />
+          
 
           {Platform.OS === 'web' && <WebBadge />}
         </ScrollView>

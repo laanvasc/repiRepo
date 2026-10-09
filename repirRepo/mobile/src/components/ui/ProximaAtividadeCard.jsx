@@ -1,7 +1,7 @@
  import {
-  useFonts,
   Inter_600SemiBold,
   Inter_700Bold,
+  useFonts,
 } from '@expo-google-fonts/inter';
 import { Image } from 'expo-image';
 import { StyleSheet, Text, View } from 'react-native';
