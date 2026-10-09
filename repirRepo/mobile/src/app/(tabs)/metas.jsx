@@ -1,4 +1,4 @@
-import React from 'react';
+import { useRouter } from 'expo-router';
 import { Platform, ScrollView, StyleSheet } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
@@ -8,18 +8,28 @@ import { ThemedView } from '@/components/themed-view';
 import CardMetasCompletas from '@/components/ui/CardMetasCompletas';
 import CardXpTotal from '@/components/ui/CardXpTotal';
 import MetaCard from '@/components/ui/MetaCard';
+import { NotificationButton } from '@/components/ui/NotificationButton';
 import { WebBadge } from '@/components/web-badge';
 
 import { BottomTabInset, MaxContentWidth, Spacing } from '@/constants/theme';
 
 export default function MetaScreen() {
+  const router = useRouter();
+
+  const handleOpenNotificacoes = () => {
+    router.push('/notificacoes');
+  };
+
   return (
     <ThemedView style={styles.container}>
       <SafeAreaView style={styles.safeArea} edges={['top', 'left', 'right']}>
-        {/* Header Fixo no topo */}
+        {/* Header com botão de notificação redirecionando para a tela/modal */}
         <HeaderAreaView
           title="Metas"
           subtitle="Acompanhe o seu progresso diário"
+          buttonIcon={
+            <NotificationButton onPress={handleOpenNotificacoes} />
+          }
         />
 
         <ScrollView
@@ -84,7 +94,7 @@ const styles = StyleSheet.create({
   scrollContent: {
     paddingHorizontal: 16,
     paddingTop: 12,
-    paddingBottom: BottomTabInset + Spacing.four, // Inset correto aplicado apenas ao Scroll
+    paddingBottom: BottomTabInset + Spacing.four,
   },
   titleContainer: {
     gap: 8,
