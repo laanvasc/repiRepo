@@ -56,6 +56,11 @@ export default function AtividadesScreen() {
               categoria="Musculação"
               concluido={false}
             />
+            <CardAtividade
+              titulo="Corrida"
+              categoria="Aerobica"
+              concluido={false}
+            />
           </ThemedView>
           <ThemedView>
             <Button titulo="Finalizar atividades diárias"/>
