@@ -1,0 +1,24 @@
+generator client {
+  provider = "prisma-client"
+  output   = "../generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
+model usuario {
+  id                  BigInt    @id @default(autoincrement())
+  created_at          DateTime  @default(now()) @db.Timestamptz(6)
+  nome                String?   @db.VarChar
+  email               String?   @db.VarChar
+  passwordHash        String?   @db.VarChar
+  xp                  Int?
+  level               Int?      @db.SmallInt
+  ofensivaAtual       Int?      @db.SmallInt
+  recordeMaximo       Int?      @db.SmallInt
+  dataUltimaAtividade DateTime? @db.Date
+  avatarUrl           String?   @db.VarChar
+}
