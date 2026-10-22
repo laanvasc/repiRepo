@@ -5,7 +5,7 @@ import { PrismaService } from './prisma/prisma.service.js';
 export class AppService {
   constructor(private readonly prisma: PrismaService) {}
 
-  async getUsuarioXP(id: number) {
+  async getUsuarioXp(id: number) {
     const usuario = await this.prisma.usuario.findUnique({
       where: { id: BigInt(id) },
     });

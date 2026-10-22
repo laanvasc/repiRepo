@@ -1,18 +1,12 @@
 import { Controller, Get, Param } from '@nestjs/common';
 import { AppService } from './app.service.js';
 
-@Controller()
+@Controller('usuarios') // <-- Garanta que o prefixo é 'usuarios'
 export class AppController {
   constructor(private readonly appService: AppService) {}
 
-  @Get('usuarios')
-  getUsuarios() {
-    return this.appService.getUsuarios();
+  @Get(':id/xp') // <-- Rota completa: /usuarios/:id/xp
+  async getUsuarioXp(@Param('id') id: string) {
+    return this.appService.getUsuarioXp(Number(id));
   }
-
-  @Get(':id/xp')
-  getUsuarioXP(@Param('id') id: string) {
-    return this.appService.getUsuarioXP(Number(id));
-  }
-
 }
