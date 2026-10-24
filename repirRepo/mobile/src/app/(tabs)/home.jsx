@@ -45,8 +45,8 @@ export default function HomeScreen() {
           <ThemedText type="code" style={styles.code}>
             
             
-
-            <CardOfensiva/>
+            {/* ta com integração parcial do backend */}
+            <CardOfensiva/> 
 
             <CardSemanaQuantAtividades/>
 

@@ -1,37 +1,70 @@
+import React, { useEffect, useState } from 'react';
+import { ActivityIndicator, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { Image } from 'expo-image';
-import { ScrollView, StyleSheet, Text, View } from 'react-native';
 
-const CONQUISTAS_DEFAULT = [
-  {
-    id: '1',
-    nome: 'Primeiro Treino',
-    corFundo: '#FF5E32', // Laranja/Vermelho
-    icone: require('@/components/assets/trofeus/trofeu1.png'),
-  },
-  {
-    id: '2',
-    nome: 'Super Foco',
-    corFundo: '#FF5E32',
-    icone: require('@/components/assets/trofeus/trofeu21.png'),
-  },
-  {
-    id: '3',
-    nome: 'Ofensiva 7 Dias',
-    corFundo: '#FFB5E8', // Rosa
-    icone: require('@/components/assets/trofeus/trofeu21.png'),
-  },
-  {
-    id: '4',
-    nome: 'Mestre da Semana',
-    corFundo: '#D2F522', // Verde-lima
-    icone: require('@/components/assets/trofeus/trofeu21.png'),
-  },
-];
+const API_URL = 'http://192.168.0.119:3000';
 
-export function CardConquistasDesbloqueadas({
-  titulo = 'Melhores conquistas',
-  conquistas = CONQUISTAS_DEFAULT,
-}) {
+async function fetchConquistasUsuario(usuarioId) {
+  try {
+    const url = `${API_URL}/usuarios/${usuarioId}/conquistas`;
+    console.log('A chamar API de conquistas em:', url);
+
+    const response = await fetch(url);
+    
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.log(`[HTTP ${response.status}] Erro do servidor:`, errorText);
+      throw new Error('Erro na resposta do servidor');
+    }
+
+    const data = await response.json();
+    console.log('Conquistas recebidas com sucesso:', data);
+    return data;
+  } catch (err) {
+    console.error('Erro detalhado de conexão:', err.message);
+    throw err;
+  }
+}
+
+export function CardConquistasDesbloqueadas({ usuarioId = 2, titulo = 'Melhores conquistas' }) {
+  const [conquistas, setConquistas] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [erro, setErro] = useState(false);
+
+  useEffect(() => {
+    async function carregarDados() {
+      try {
+        setLoading(true);
+        setErro(false);
+        const data = await fetchConquistasUsuario(usuarioId);
+        setConquistas(data);
+      } catch (error) {
+        console.error('Erro ao ligar ao backend:', error);
+        setErro(true);
+      } finally {
+        setLoading(false);
+      }
+    }
+
+    carregarDados();
+  }, [usuarioId]);
+
+  if (loading) {
+    return (
+      <View style={[styles.card, styles.center]}>
+        <ActivityIndicator size="large" color="#151522" />
+      </View>
+    );
+  }
+
+  if (erro) {
+    return (
+      <View style={[styles.card, styles.center]}>
+        <Text style={styles.conquistaNome}>Erro ao carregar conquistas.</Text>
+      </View>
+    );
+  }
+
   return (
     <View style={styles.card}>
       <Text style={styles.title}>{titulo}</Text>
@@ -41,18 +74,19 @@ export function CardConquistasDesbloqueadas({
         showsHorizontalScrollIndicator={false}
         contentContainerStyle={styles.scrollContent}
       >
-        {conquistas.map((item) => (
-          <View key={item.id} style={styles.itemContainer}>
-            <View style={[styles.circle, { backgroundColor: item.corFundo }]}>
+        {conquistas.map((item, index) => (
+          <View key={item.id_conquista || index} style={styles.itemContainer}>
+            {/* Você pode mapear cores ou ícones de acordo com o nível/categoria vindos do banco */}
+            <View style={[styles.circle, { backgroundColor: item.corFundo || '#FF5E32' }]}>
               <Image
-                source={item.icone}
+                source={item.icone || require('@/components/assets/trofeus/trofeu1.png')}
                 contentFit="contain"
                 style={styles.trophyIcon}
               />
             </View>
 
             <Text style={styles.conquistaNome} numberOfLines={2}>
-              {item.nome}
+              {item.nome_conquista}
             </Text>
           </View>
         ))}
@@ -66,12 +100,15 @@ export default CardConquistasDesbloqueadas;
 const styles = StyleSheet.create({
   card: {
     width: '100%',
-    // Arrumar isso depois
     height: '24%',
     borderRadius: 24,
     paddingVertical: 18,
     paddingHorizontal: 16,
-    alignSelf: 'flex-start', // Impede que o card estique verticalmente
+    alignSelf: 'flex-start',
+  },
+  center: {
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   title: {
     fontSize: 18,
@@ -83,7 +120,7 @@ const styles = StyleSheet.create({
   scrollContent: {
     gap: 16,
     paddingRight: 8,
-    alignItems: 'flex-start', // Mantém o alinhamento no topo dos itens
+    alignItems: 'flex-start',
   },
   itemContainer: {
     alignItems: 'center',
