@@ -23,7 +23,7 @@ async function fetchUsuarioXp(usuarioId) {
     throw err;
   }
 }
-export function CardXpTotal({ usuarioId = 1 }) {
+export function CardXpTotal({ usuarioId = 2 }) {
   const [dados, setDados] = useState(null);
   const [loading, setLoading] = useState(true);
   const [erro, setErro] = useState(false);
@@ -63,7 +63,7 @@ export function CardXpTotal({ usuarioId = 1 }) {
   }
 
   // Extrai os dados retornados do NestJS com valores de fallback seguros
-  const xpTotal = dados.xpTotal ?? 0;
+  const xpTotal = dados.xp ?? 0;
   const nivel = dados.nivel ?? 1;
   const xpAtualNivel = dados.xpAtualNivel ?? 0;
   const xpNecessarioNivel = dados.xpNecessarioNivel ?? 1000;
@@ -82,7 +82,7 @@ export function CardXpTotal({ usuarioId = 1 }) {
         {Number(xpTotal).toLocaleString('pt-BR')} XP total
       </Text>
 
-      {/* Barra de Progresso */}
+      {/* Barra de Progresso */}  
       <View style={styles.progressBarBackground}>
         <View style={[styles.progressBarFill, { width: `${progresso}%` }]} />
       </View>
