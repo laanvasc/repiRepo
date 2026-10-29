@@ -1,46 +1,76 @@
-import {
-  Inter_400Regular,
-  Inter_700Bold,
-  useFonts,
-} from '@expo-google-fonts/inter';
-
-import { StyleSheet, Text, View } from 'react-native';
+import { useEffect, useState } from 'react';
+import { ActivityIndicator, StyleSheet, Text, View } from 'react-native';
 import Svg, { Circle, Line, Path } from 'react-native-svg';
+import { api } from '@/services/api';
 
 const ORANGE = '#EE6C42';
 const PINK = '#F0B4A4';
 const LIME = '#DCEB52';
+const GRAY = '#D3D3D3'; 
 
-// Altura reduzida de 318 para 250
-const CARD_HEIGHT = 250;
-
-// Outubro de 2026 começa numa quinta-feira
-const weeks = [
-  [27, 28, 29, 30, 1, 2, 3],
-  [4, 5, 6, 7, 8, 9, 10],
-  [11, 12, 13, 14, 15, 16, 17],
-  [18, 19, 20, 21, 22, 23, 24],
-  [25, 26, 27, 28, 29, 30, 31],
-];
-
-// Dias do mês anterior (esmaecidos)
-const pastDays = [
-  [true, true, true, true, false, false, false],
-  [false, false, false, false, false, false, false],
-  [false, false, false, false, false, false, false],
-  [false, false, false, false, false, false, false],
-  [false, false, false, false, false, false, false],
-];
-
-// Dias concluídos (fica verde-limão)
-const doneDays = [1, 3, 5, 6, 7, 8, 9, 10, 11, 12];
-
+const CARD_HEIGHT = 370;
 const weekDays = ['D', 'S', 'T', 'Q', 'Q', 'S', 'S'];
 
-export default function MensalCard() {
-  const [fontsLoaded] = useFonts({ Inter_400Regular, Inter_700Bold });
+export function MensalCard({ usuarioId }) {
+  const [loading, setLoading] = useState(true);
+  const [dadosMensais, setDadosMensais] = useState({
+    ofensivaAtual: 0,
+    totalAtividades: 0,
+    diasConcluidos: [],
+    diasPassados: [],
+    weeks: [],
+  });
 
-  if (!fontsLoaded) return null;
+  useEffect(() => {
+    if (!usuarioId) {
+      setLoading(false);
+      return;
+    }
+
+    async function carregarDadosMensais() {
+      try {
+        setLoading(true);
+        const response = await api.get(`/usuarios/${usuarioId}/mensal`);
+        const data = response.data;
+
+        setDadosMensais({
+          ofensivaAtual: data.ofensivaAtual ?? 0,
+          totalAtividades: data.totalAtividades ?? 0,
+          diasConcluidos: data.diasConcluidos ?? [], 
+          diasPassados: data.diasPassados ?? [],    
+          weeks: data.weeks ?? [      
+            [27, 28, 29, 30, 1, 2, 3],
+            [4, 5, 6, 7, 8, 9, 10],
+            [11, 12, 13, 14, 15, 16, 17],
+            [18, 19, 20, 21, 22, 23, 24],
+            [25, 26, 27, 28, 29, 30, 31],
+          ],
+        });
+      } catch (err) {
+        console.error('Erro ao carregar dados mensais:', err.response?.data || err.message);
+      } finally {
+        setLoading(false);
+      }
+    }
+
+    carregarDadosMensais();
+  }, [usuarioId]);
+
+  if (!usuarioId) {
+    return (
+      <View style={[styles.card, styles.center]}>
+        <Text style={styles.statValue}>Utilizador não identificado.</Text>
+      </View>
+    );
+  }
+
+  if (loading) {
+    return (
+      <View style={[styles.card, styles.center]}>
+        <ActivityIndicator size="large" color="#FFFFFF" />
+      </View>
+    );
+  }
 
   return (
     <View style={styles.card}>
@@ -52,12 +82,10 @@ export default function MensalCard() {
         preserveAspectRatio="none"
         style={StyleSheet.absoluteFill}
       >
-        {/* onda superior */}
         <Path
           d="M0 0 H370 V64 C300 64 250 20 190 20 C130 20 80 62 0 62 Z"
           fill={PINK}
         />
-        {/* faixa do meio */}
         <Path
           d="M0 145 C70 145 130 102 193 102 C255 102 300 145 370 145
              V237 C300 237 255 195 193 195 C130 195 70 237 0 237 Z"
@@ -82,12 +110,12 @@ export default function MensalCard() {
       {/* ESTATÍSTICAS */}
       <View style={[styles.stat, { left: 16 }]}>
         <Text style={styles.statLabel}>Ofensiva</Text>
-        <Text style={styles.statValue}>13 dias</Text>
+        <Text style={styles.statValue}>{dadosMensais.ofensivaAtual} dias</Text>
       </View>
 
       <View style={[styles.stat, { left: 110 }]}>
         <Text style={styles.statLabel}>Concluídas</Text>
-        <Text style={styles.statValue}>350 atividades</Text>
+        <Text style={styles.statValue}>{dadosMensais.totalAtividades} atividades</Text>
       </View>
 
       {/* DIAS DA SEMANA */}
@@ -99,23 +127,24 @@ export default function MensalCard() {
         ))}
       </View>
 
-      {/* CALENDÁRIO */}
+      {/* CALENDÁRIO INTELIGENTE */}
       <View style={styles.calendar}>
-        {weeks.map((week, w) => (
+        {dadosMensais.weeks.map((week, w) => (
           <View key={w} style={styles.weekRow}>
             {week.map((n, d) => {
-              const past = pastDays[w][d];
-              const done = !past && doneDays.includes(n);
+              const isDone = dadosMensais.diasConcluidos.includes(n);
+              const isPast = !isDone && n < 29; 
+
               return (
                 <View key={d} style={styles.column}>
                   <View
                     style={[
                       styles.day,
-                      done && styles.dayDone,
-                      past && styles.dayPast,
+                      isDone && styles.dayDone,   
+                      isPast && styles.dayPast,   
                     ]}
                   >
-                    <Text style={styles.dayText}>
+                    <Text style={[styles.dayText, isPast && styles.dayTextPast]}>
                       {String(n).padStart(2, '0')}
                     </Text>
                   </View>
@@ -129,6 +158,8 @@ export default function MensalCard() {
   );
 }
 
+export default MensalCard;
+
 const styles = StyleSheet.create({
   card: {
     width: '100%',
@@ -137,101 +168,94 @@ const styles = StyleSheet.create({
     borderRadius: 20,
     overflow: 'hidden',
   },
-
+  center: {
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
   title: {
     position: 'absolute',
-    left: 16,
-    top: 12,
-    fontFamily: 'Inter_700Bold',
+    left: 18,
+    top: 18,
     fontSize: 16,
     lineHeight: 20,
     color: '#FFFFFF',
+    fontWeight: 'bold',
   },
-
   share: {
     position: 'absolute',
-    right: 14,
-    top: 12,
+    right: 16,
+    top: 18,
     width: 22,
     height: 22,
     alignItems: 'center',
     justifyContent: 'center',
   },
-
   stat: {
     position: 'absolute',
-    top: 42,
+    top: 56,
   },
-
   statLabel: {
-    fontFamily: 'Inter_400Regular',
     fontSize: 12,
     lineHeight: 15,
     color: '#FFFFFF',
   },
-
   statValue: {
-    fontFamily: 'Inter_700Bold',
     fontSize: 13,
     lineHeight: 16,
     color: '#FFFFFF',
+    fontWeight: 'bold',
   },
-
   weekHeader: {
     position: 'absolute',
-    top: 86,
+    top: 120,
     left: 3,
     right: 3,
     flexDirection: 'row',
   },
-
   weekDay: {
-    fontFamily: 'Inter_400Regular',
     fontSize: 13,
     lineHeight: 16,
     color: '#FFFFFF',
     textAlign: 'center',
   },
-
   calendar: {
     position: 'absolute',
-    top: 108,
+    top: 155,
     left: 3,
     right: 3,
   },
-
   weekRow: {
     flexDirection: 'row',
-    marginBottom: 5,
+    marginBottom: 18,
   },
-
   column: {
     flex: 1,
     alignItems: 'center',
   },
-
+  // Transformado em círculo perfeito (largura e altura iguais a 28, borderRadius 14)
   day: {
-    width: 15,
-    height: 22,
-    borderRadius: 8,
+    width: 28,  
+    height: 28, 
+    borderRadius: 14,
     alignItems: 'center',
     justifyContent: 'center',
     backgroundColor: '#FFFFFF',
   },
-
   dayDone: {
     backgroundColor: LIME,
+    transform: [{ scale: 1.15 }], 
   },
-
   dayPast: {
-    opacity: 0.4,
+    backgroundColor: GRAY,
+    transform: [{ scale: 1.25 }], 
   },
-
   dayText: {
-    fontFamily: 'Inter_700Bold',
-    fontSize: 9,
-    lineHeight: 11,
+    fontSize: 10,
+    lineHeight: 12,
     color: ORANGE,
-    includeFontPadding: false,
+    fontWeight: 'bold',
+  },
+  dayTextPast: {
+    color: '#444444', 
   },
 });

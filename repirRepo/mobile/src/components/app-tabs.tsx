@@ -49,7 +49,7 @@ export default function AppTabs() {
         }}
       />
 
-      {/* 3. Botão Central Flutuante (+) */}
+      {/* 3. Botão Central Flutuante (+) REMOVIDO
       <Tabs.Screen
         name="cadastrarAtividade"
         options={{
@@ -68,7 +68,7 @@ export default function AppTabs() {
             </Pressable>
           ),
         }}
-      />
+      /> */}
 
       {/* 4. Metas */}
       <Tabs.Screen

@@ -15,12 +15,12 @@ model usuario {
   email               String?              @db.VarChar
   passwordHash        String?              @db.VarChar
   xp                  Int?
-  level               Int?                 @db.SmallInt
   ofensivaAtual       Int?                 @db.SmallInt
   recordeMaximo       Int?                 @db.SmallInt
   dataUltimaAtividade DateTime?            @db.Timestamptz(6)
   avatarUrl           String?              @db.VarChar
   usuario_atividades  usuario_atividades[]
+  usuario_conquistas  usuario_conquistas[]
 }
 
 /// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
@@ -52,33 +52,35 @@ model atividades {
 
 /// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
 model conquistas {
-  id_conquista        BigInt @id @default(autoincrement())
-  nome_conquista      String @db.VarChar
-  nivel_conquista     Int?   @db.SmallInt
-  categoria_conquista Int?   @db.SmallInt
-  xp_conquista        Int?   @db.SmallInt
-  nivel               Int?   @db.SmallInt
+  id_conquista        BigInt               @id @default(autoincrement())
+  nome_conquista      String               @db.VarChar
+  nivel_conquista     Int?                 @db.SmallInt
+  categoria_conquista Int?                 @db.SmallInt
+  xp_conquista        Int?                 @db.SmallInt
+  usuario_conquistas  usuario_conquistas[]
 }
 
 /// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
 model usuario_atividades {
-  id_historico      Int         @id @default(autoincrement())
-  id_usuario        BigInt      // Alterado de Int para BigInt para coincidir com model usuario (id)
-  id_atividade      BigInt      // Alterado de Int para BigInt para coincidir com model atividades (id_atividade)
-  xp_ganho          Int
-  data_realizacao   DateTime?   @default(now()) @db.Timestamp(6)
-  observacao        String?     @db.VarChar(255)
-  duracao_minutos   Int         @default(0)
-  intensidade       String      @default("Moderado") @db.VarChar(20)
-  atividades        atividades  @relation(fields: [id_atividade], references: [id_atividade], onDelete: NoAction, onUpdate: NoAction)
-  usuario           usuario     @relation(fields: [id_usuario], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  id_historico    Int       @id @default(autoincrement())
+  id_usuario      BigInt
+  id_atividade    BigInt
+  xp_ganho        Int
+  data_realizacao DateTime? @default(now()) @db.Timestamp(6)
+  observacao      String?   @db.VarChar(255)
+  duracao_minutos Int       @default(0)
+  intensidade     String    @default("Moderado") @db.VarChar(20)
+  atividades      atividades @relation(fields: [id_atividade], references: [id_atividade], onDelete: NoAction, onUpdate: NoAction)
+  usuario         usuario    @relation(fields: [id_usuario], references: [id], onDelete: NoAction, onUpdate: NoAction)
 }
 
 /// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
 model usuario_conquistas {
   id_usuario_conquista Int       @id @default(autoincrement())
-  id_usuario           Int
-  id_conquista         Int
+  id_usuario           BigInt
+  id_conquista         BigInt
   data_desbloqueio     DateTime? @default(now()) @db.Timestamp(6)
   progresso_atual      Int?      @default(0)
+  usuario              usuario    @relation(fields: [id_usuario], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  conquista            conquistas @relation(fields: [id_conquista], references: [id_conquista], onDelete: NoAction, onUpdate: NoAction)
 }

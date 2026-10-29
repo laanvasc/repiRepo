@@ -1,4 +1,4 @@
-import { Controller, Get, Param, Post } from '@nestjs/common';
+import { Controller, Get, Param, Post, Body } from '@nestjs/common';
 import { AppService } from './app.service.js';
 
 @Controller('usuarios') // <-- Prefixo da rota
@@ -21,9 +21,24 @@ export class AppController {
   }
 
   // Rota para verificar e atualizar a ofensiva do usuário
-  // Pode ser GET ou POST (utilizei GET para facilitar testes no navegador/Postman)
   @Get(':id/ofensiva') 
   async atualizarOfensiva(@Param('id') id: string) {
     return this.appService.atualizarOfensiva(Number(id));
+  }
+
+  @Get(':id/conquistas')
+  async getConquistasUsuario(@Param('id') id: string) {
+    return this.appService.getConquistasUsuario(Number(id));
+  }
+
+  @Post('login')
+  async login(@Body() body: { email: string; senha?: string }) {
+    return this.appService.validarLogin(body.email, body.senha);
+  }
+
+  // Rota mensal corrigida para chamar diretamente o AppService
+  @Get(':id/mensal')
+  async getDadosMensais(@Param('id') id: string) {
+    return this.appService.getDadosMensais(Number(id));
   }
 }

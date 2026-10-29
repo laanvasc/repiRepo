@@ -1,34 +1,30 @@
 import { useEffect, useState } from 'react';
 import { ActivityIndicator, StyleSheet, Text, View } from 'react-native';
+import { api } from '@/services/api'; // Importa a tua instância centralizada do Axios
 
-const API_URL = 'http://192.168.0.119:3000';
 async function fetchUsuarioXp(usuarioId) {
   try {
-    const url = `${API_URL}/usuarios/${usuarioId}/xp`;
-    console.log('A chamar API em:', url);
-
-    const response = await fetch(url);
-    
-    if (!response.ok) {
-      const errorText = await response.text();
-      console.log(`[HTTP ${response.status}] Erro do servidor:`, errorText);
-      throw new Error('Erro na resposta do servidor');
-    }
-
-    const data = await response.json();
-    console.log('Dados recebidos com sucesso:', data);
-    return data;
+    console.log(`A chamar API de XP para o ID: ${usuarioId}`);
+    const response = await api.get(`/usuarios/${usuarioId}/xp`);
+    console.log('Dados de XP recebidos com sucesso:', response.data);
+    return response.data;
   } catch (err) {
-    console.error('Erro detalhado de conexão:', err.message);
+    console.error('Erro detalhado de conexão:', err.response?.data || err.message);
     throw err;
   }
 }
-export function CardXpTotal({ usuarioId = 2 }) {
+
+export function CardXpTotal({ usuarioId }) {
   const [dados, setDados] = useState(null);
   const [loading, setLoading] = useState(true);
   const [erro, setErro] = useState(false);
 
   useEffect(() => {
+    if (!usuarioId) {
+      setLoading(false);
+      return;
+    }
+
     async function carregarDados() {
       try {
         setLoading(true);
@@ -45,6 +41,14 @@ export function CardXpTotal({ usuarioId = 2 }) {
 
     carregarDados();
   }, [usuarioId]);
+
+  if (!usuarioId) {
+    return (
+      <View style={[styles.card, styles.center]}>
+        <Text style={styles.legendaText}>Utilizador não identificado.</Text>
+      </View>
+    );
+  }
 
   if (loading) {
     return (
@@ -68,7 +72,7 @@ export function CardXpTotal({ usuarioId = 2 }) {
   const xpAtualNivel = dados.xpAtualNivel ?? 0;
   const xpNecessarioNivel = dados.xpNecessarioNivel ?? 1000;
 
-  // Cálculo da barra de progresso
+  // Cálculo da barra de progresso e XP restante
   const progresso = Math.min(Math.max(xpAtualNivel / xpNecessarioNivel, 0), 1) * 100;
   const xpRestante = Math.max(xpNecessarioNivel - xpAtualNivel, 0);
 
