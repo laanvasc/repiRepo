@@ -1,7 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { Platform, ScrollView, StyleSheet } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { useLocalSearchParams } from 'expo-router';
 
 import { ThemedView } from '@/components/themed-view';
 import { WebBadge } from '@/components/web-badge';
@@ -18,33 +17,40 @@ import CardOfensiva from '../../components/ui/CardOfensiva';
 import CardProgressoSemanal from '../../components/ui/CardProgressoSemana';
 import CardSemanaQuantAtividades from '../../components/ui/CardSemanaQuantAtividades';
 
+import { useAuth } from '@/context/AuthContext'; // <-- 1. Importa o hook de autenticação
+
 export default function HomeScreen() {
-  const params = useLocalSearchParams();
-  const usuarioLogadoId = params.usuarioId ? Number(params.usuarioId) : null;
+  const { usuarioId } = useAuth();
+  console.log('🏠 HomeScreen renderizada com o usuarioId:', usuarioId);
 
   const [primeiroNome, setPrimeiroNome] = useState('Usuário');
 
   // Busca o nome do usuário logado ao carregar a Home
-  useEffect(() => {
+useEffect(() => {
+    let isMounted = true;
+
     async function carregarNomeUsuario() {
-      if (!usuarioLogadoId) return;
+      if (!usuarioId) return; // <-- Garante que só executa se o ID existir
+      
       try {
-        const response = await api.get(`/usuarios/${usuarioLogadoId}/nome`);
-        // O backend pode retornar um objeto ou string direta. Vamos tratar ambos:
-        const nomeCompleto = typeof response.data === 'string' 
-          ? response.data 
-          : (response.data?.nome || response.data?.nome_usuario || 'Usuário');
-        
-        // Pega apenas o primeiro nome (ex: "João Silva" vira "João")
-        const apenasPrimeiro = nomeCompleto.trim().split(' ')[0];
-        setPrimeiroNome(apenasPrimeiro);
+        const response = await api.get(`/usuarios/${usuarioId}/nome`);
+        if (isMounted) {
+          const nomeCompleto = typeof response.data === 'string' 
+            ? response.data 
+            : (response.data?.nome || response.data?.nome_usuario || 'Usuário');
+          setPrimeiroNome(nomeCompleto.trim().split(' ')[0]);
+        }
       } catch (err) {
-        console.error('Erro ao buscar o nome do usuário:', err);
+        if (isMounted) console.error('Erro ao buscar o nome:', err);
       }
     }
 
     carregarNomeUsuario();
-  }, [usuarioLogadoId]);
+
+    return () => {
+      isMounted = false;
+    };
+  }, [usuarioId]);
 
   return (
     <ThemedView style={styles.container}>
@@ -68,12 +74,13 @@ export default function HomeScreen() {
           </ThemedView>
 
           <ThemedView style={styles.cardsContainer}>
-            <CardOfensiva usuarioId={usuarioLogadoId} /> 
-            <CardSemanaQuantAtividades usuarioId={usuarioLogadoId} />
-            <CardProgressoSemanal usuarioId={usuarioLogadoId} />
-            <ProximaAtividadeCard usuarioId={usuarioLogadoId} />
-            <CardConquistasDesbloqueadas usuarioId={usuarioLogadoId} />
-            <CardDestaquesSemanas usuarioId={usuarioLogadoId} />
+            {/* 4. Passa o usuarioId global para todos os cartões */}
+            <CardOfensiva usuarioId={usuarioId} /> 
+            {/* <CardSemanaQuantAtividades usuarioId={usuarioId} /> */}
+            {/* <CardProgressoSemanal usuarioId={usuarioId} /> */}
+            <ProximaAtividadeCard usuarioId={usuarioId} />
+            <CardConquistasDesbloqueadas usuarioId={usuarioId} />
+            <CardDestaquesSemanas usuarioId={usuarioId} />
           </ThemedView>
 
           {Platform.OS === 'web' && <WebBadge />}

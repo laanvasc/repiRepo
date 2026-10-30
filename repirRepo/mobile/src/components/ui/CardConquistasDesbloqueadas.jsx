@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { ActivityIndicator, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { Image } from 'expo-image';
-import { api } from '@/services/api'; // Importa a tua instância centralizada do Axios
+import { api } from '@/services/api';
 
 async function fetchConquistasUsuario(usuarioId) {
   try {
@@ -100,9 +100,9 @@ export function CardConquistasDesbloqueadas({ usuarioId, titulo = 'Melhores conq
                   {nomeConquista}
                 </Text>
                 
-                {progresso !== undefined && (
+                {/* {progresso !== undefined && (
                   <Text style={styles.progressoText}>Progresso: {progresso}</Text>
-                )}
+                )} */}
               </View>
             );
           })}
@@ -117,15 +117,23 @@ export default CardConquistasDesbloqueadas;
 const styles = StyleSheet.create({
   card: {
     width: '100%',
-    height: '24%',
+    minHeight: 190, // Altura mínima generosa e responsiva
     borderRadius: 24,
-    paddingVertical: 18,
+    paddingVertical: 20,
     paddingHorizontal: 16,
-    alignSelf: 'flex-start',
+    backgroundColor: '#FFFFFF', // Garante consistência visual no card
+    alignSelf: 'center',
+    // // Sombra suave opcional para destaque no layout
+    // shadowColor: '#000',
+    // shadowOffset: { width: 0, height: 2 },
+    // shadowOpacity: 0.05,
+    // shadowRadius: 8,
+    // elevation: 2,
   },
   center: {
     justifyContent: 'center',
     alignItems: 'center',
+    minHeight: 140,
   },
   title: {
     fontSize: 18,
@@ -137,19 +145,19 @@ const styles = StyleSheet.create({
   scrollContent: {
     gap: 16,
     paddingRight: 8,
-    alignItems: 'flex-start',
+    alignItems: 'center',
   },
   itemContainer: {
     alignItems: 'center',
-    width: 88,
+    width: 90,
   },
   circle: {
-    width: 80,
-    height: 80,
-    borderRadius: 40,
+    width: 84,
+    height: 84,
+    borderRadius: 42,
     alignItems: 'center',
     justifyContent: 'center',
-    marginBottom: 8,
+    marginBottom: 10,
   },
   trophyIcon: {
     width: 52,
@@ -160,7 +168,7 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     color: '#151522',
     textAlign: 'center',
-    lineHeight: 15,
+    lineHeight: 16,
   },
   progressoText: {
     fontSize: 10,
@@ -170,7 +178,7 @@ const styles = StyleSheet.create({
     textAlign: 'center',
   },
   emptyContainer: {
-    flex: 1,
+    paddingVertical: 24,
     justifyContent: 'center',
     alignItems: 'center',
     paddingHorizontal: 16,

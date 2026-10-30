@@ -53,9 +53,9 @@ export default function MetaScreen() {
                 tituloMeta="Fazer 3 atividades"
                 onPress={() => console.log('testando')}
               />
+              {/* <MetaCard tituloMeta="Fazer 3 atividades" />
               <MetaCard tituloMeta="Fazer 3 atividades" />
-              <MetaCard tituloMeta="Fazer 3 atividades" />
-              <MetaCard tituloMeta="Fazer 3 atividades" />
+              <MetaCard tituloMeta="Fazer 3 atividades" /> */}
             </ThemedView>
           </ThemedView>
 

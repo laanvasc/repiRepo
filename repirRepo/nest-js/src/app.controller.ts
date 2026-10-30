@@ -20,6 +20,12 @@ export class AppController {
     return this.appService.getUsuarioXp(Number(id));
   }
 
+  // Corrigido para remover o 'usuarios/' duplicado, ficando apenas ':id/atividades-frequentes'
+  @Get(':id/atividades-frequentes')
+  async getAtividadesFrequentesUsuario(@Param('id') id: string) {
+    return this.appService.getAtividadesFrequentesUsuario(Number(id));
+  }
+
   // Rota para verificar e atualizar a ofensiva do usuário
   @Get(':id/ofensiva') 
   async atualizarOfensiva(@Param('id') id: string) {

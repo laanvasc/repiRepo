@@ -1,7 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Platform, ScrollView, StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { useLocalSearchParams } from 'expo-router';
 
 import HeaderAreaView from '@/components/header-area-view';
 import { ThemedText } from '@/components/themed-text';
@@ -13,22 +12,20 @@ import { NotificationButton } from '@/components/ui/NotificationButton';
 import { WebBadge } from '@/components/web-badge';
 import Trofeu from '../../components/ui/Trofeu';
 
+import { useAuth } from '@/context/AuthContext'; // <-- Importa o hook de autenticação
 import { BottomTabInset, MaxContentWidth, Spacing } from '@/constants/theme';
 import { api } from '@/services/api';
 
 export default function PerfilScreen() {
-  const params = useLocalSearchParams();
-  // Pega o ID passado por parâmetros (ou usa o ID 1 como fallback se entrar direto)
-  const usuarioLogadoId = params.usuarioId ? Number(params.usuarioId) : 1;
-
+  const { usuarioId } = useAuth(); // <-- Obtém o ID do utilizador logado globalmente
   const [nomeUsuario, setNomeUsuario] = useState('Meu Perfil');
 
-  // Opcional: Se quiseres customizar o título do header com o nome do utilizador
+  // Busca o nome do perfil de forma dinâmica usando o ID do contexto
   useEffect(() => {
     async function carregarNomePerfil() {
-      if (!usuarioLogadoId) return;
+      if (!usuarioId) return;
       try {
-        const response = await api.get(`/usuarios/${usuarioLogadoId}/nome`);
+        const response = await api.get(`/usuarios/${usuarioId}/nome`);
         const nomeCompleto = typeof response.data === 'string' 
           ? response.data 
           : (response.data?.nome || response.data?.nome_usuario || 'Meu Perfil');
@@ -38,7 +35,7 @@ export default function PerfilScreen() {
       }
     }
     carregarNomePerfil();
-  }, [usuarioLogadoId]);
+  }, [usuarioId]);
 
   return (
     <ThemedView style={styles.container}>
@@ -61,9 +58,9 @@ export default function PerfilScreen() {
           showsVerticalScrollIndicator={false}
         >
           <ThemedView style={styles.cardsWrapper}>
-            {/* Card de XP agora puxa dinamicamente através do usuarioId */}
-            <CardXpTotal usuarioId={usuarioLogadoId} />
-            <MensalCard usuarioId={usuarioLogadoId} />
+            {/* Cards puxam dinamicamente através do usuarioId global */}
+            <CardXpTotal usuarioId={usuarioId} />
+            <MensalCard usuarioId={usuarioId} />
           </ThemedView>
 
           <ThemedView style={styles.sectionsWrapper}>

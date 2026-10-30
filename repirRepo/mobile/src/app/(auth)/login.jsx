@@ -7,9 +7,12 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import Button from '@/components/ui/Button';
 import InputText from '@/components/ui/InputText';
 import { PasswordInput } from '@/components/ui/PasswordInput';
-import { api } from '@/services/api'; // Certifica-te de que o caminho para o teu api.js está correto
+import { api } from '@/services/api';
+import { useAuth } from '@/context/AuthContext'; // <-- 1. Importa o hook de autenticação
 
 export default function LoginScreen() {
+    const { entrar } = useAuth(); // <-- 2. Extrai a função entrar do contexto
+
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
     const [emailError, setEmailError] = useState('');
@@ -38,11 +41,16 @@ export default function LoginScreen() {
                 // Extrai o ID do utilizador retornado pela API
                 const usuarioId = response.data.usuario?.id;
 
-                // Redireciona para a home do app passando o ID via parâmetros de rota
-                router.replace({
-                    pathname: '/home',
-                    params: { usuarioId: usuarioId }
-                });
+                if (!usuarioId) {
+                    throw new Error('ID do usuário não retornado pela API.');
+                }
+
+                // 3. ATUALIZA O ESTADO GLOBAL E GUARDA NO ASYNSTORAGE ANTES DE REDIRECIONAR!
+                await entrar(usuarioId);
+
+                // Redireciona para a home do app (o contexto já tem o ID guardado)
+                router.replace('/home');
+
             } catch (err) {
                 console.error('Erro no login:', err.response?.data || err.message);
                 const mensagemErro = err.response?.data?.message || 'Não foi possível efetuar o login. Verifica as tuas credenciais.';

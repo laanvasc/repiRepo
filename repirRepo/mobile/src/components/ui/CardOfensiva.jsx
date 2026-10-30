@@ -20,21 +20,27 @@ async function fetchUsuarioOfensiva(usuarioId) {
   }
 }
 
-export function CardOfensiva({ usuarioId = 2 }) {
+export function CardOfensiva({ usuarioId }) {
   const [dados, setDados] = useState(null);
   const [loading, setLoading] = useState(true);
   const [erro, setErro] = useState(false);
   const [fontsLoaded] = useFonts({ Inter_600SemiBold, Inter_700Bold });
 
   useEffect(() => {
+    // Se o ID ainda for null ou undefined, nem tenta chamar a API!
+    if (!usuarioId) {
+      setLoading(false);
+      return; 
+    }
+
     async function carregarDados() {
       try {
         setLoading(true);
         setErro(false);
-        const data = await fetchUsuarioOfensiva(usuarioId);
-        setDados(data);
-      } catch (error) {
-        console.error('Erro ao ligar ao backend:', error);
+        const resposta = await fetchUsuarioOfensiva(usuarioId);
+        setDados(resposta); // <-- Corrigido para usar setDados em vez de setOfensiva
+      } catch (err) {
+        console.error('Erro ao carregar ofensiva:', err);
         setErro(true);
       } finally {
         setLoading(false);

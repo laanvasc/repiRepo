@@ -1,9 +1,20 @@
-import { Injectable, NotFoundException, UnauthorizedException } from '@nestjs/common';
+import { Injectable, NotFoundException, UnauthorizedException, BadRequestException } from '@nestjs/common';
 import { PrismaService } from './prisma/prisma.service.js';
 
 @Injectable()
 export class AppService {
   constructor(private readonly prisma: PrismaService) {}
+
+  /**
+   * Helper privado para garantir que o ID é válido antes de converter para BigInt
+   */
+  private validarId(id: any): bigint {
+    const num = Number(id);
+    if (!id || isNaN(num) || num <= 0) {
+      throw new BadRequestException(`ID de usuário inválido fornecido: ${id}`);
+    }
+    return BigInt(num);
+  }
 
   /**
    * Valida as credenciais do usuário para login.
@@ -38,22 +49,25 @@ export class AppService {
   }
 
   async getUsuarioNome(id: number) {
+    const idBigInt = this.validarId(id);
     const usuario = await this.prisma.usuario.findUnique({
-      where: { id: BigInt(id) },
+      where: { id: idBigInt },
     });
     return usuario ? usuario.nome : null;
   }
 
   async getUsuarioDataCreation(id: number) {
+    const idBigInt = this.validarId(id);
     const usuario = await this.prisma.usuario.findUnique({
-      where: { id: BigInt(id) },
+      where: { id: idBigInt },
     });
     return usuario ? usuario.created_at : null;
   }
 
   async getConquistasUsuario(id: number) {
+    const idBigInt = this.validarId(id);
     const usuario = await this.prisma.usuario.findUnique({
-      where: { id: BigInt(id) },
+      where: { id: idBigInt },
     });
 
     if (!usuario) {
@@ -62,7 +76,7 @@ export class AppService {
 
     // Busca apenas as conquistas vinculadas ao usuário logado
     const usuarioConquistas = await this.prisma.usuario_conquistas.findMany({
-      where: { id_usuario: BigInt(id) },
+      where: { id_usuario: idBigInt },
       include: {
         conquista: true, // Traz os detalhes da conquista associada
       },
@@ -78,8 +92,9 @@ export class AppService {
   }
 
   async getUsuarioXp(id: number) {
+    const idBigInt = this.validarId(id);
     const usuario = await this.prisma.usuario.findUnique({
-      where: { id: BigInt(id) },
+      where: { id: idBigInt },
     });
 
     if (!usuario) {
@@ -100,8 +115,9 @@ export class AppService {
   }
 
   async atualizarOfensiva(id: number) {
+    const idBigInt = this.validarId(id);
     const usuario = await this.prisma.usuario.findUnique({
-      where: { id: BigInt(id) },
+      where: { id: idBigInt },
     });
 
     if (!usuario) {
@@ -144,7 +160,7 @@ export class AppService {
 
     if (atualizou || novaOfensiva !== usuario.ofensivaAtual || novoRecorde !== usuario.recordeMaximo) {
       const usuarioAtualizado = await this.prisma.usuario.update({
-        where: { id: BigInt(id) },
+        where: { id: idBigInt },
         data: {
           ofensivaAtual: novaOfensiva,
           recordeMaximo: novoRecorde,
@@ -168,9 +184,10 @@ export class AppService {
   // ==========================================
   // NOVOS MÉTODOS PARA O MENSAL CARD & OFENSIVA
   // ==========================================
-async getDadosMensais(usuarioId: number) {
+  async getDadosMensais(usuarioId: number) {
+    const idBigInt = this.validarId(usuarioId);
     const atividades = await this.prisma.usuario_atividades.findMany({
-      where: { id_usuario: BigInt(usuarioId) },
+      where: { id_usuario: idBigInt },
     }).catch(() => []); 
 
     const diasConcluidos = [...new Set(atividades.map((a: any) => {
@@ -187,9 +204,36 @@ async getDadosMensais(usuarioId: number) {
     };
   }
 
+async getAtividadesFrequentesUsuario(id: number) {
+    const idBigInt = this.validarId(id);
+
+    const frequencias = await this.prisma.atividade_frequente.findMany({
+      where: { id_usuario: Number(idBigInt) },
+      include: {
+        atividade: true, // Traz os dados oficiais da tabela mestre
+      },
+    }).catch(() => []);
+
+    return frequencias.map((f: any) => ({
+      id_atividade_frequente: f.id_atividade_frequente,
+      id_atividade: f.id_atividade ? Number(f.id_atividade) : null,
+      nome_atividade: f.atividade?.nome_atividade || 'Atividade',
+      // 'categoria' já não existe na tabela frequente, podes omitir ou usar a da tabela mestre se houver
+      repete_seg: f.repete_seg ?? false,
+      repete_ter: f.repete_ter ?? false,
+      repete_qua: f.repete_qua ?? false,
+      repete_qui: f.repete_qui ?? false,
+      repete_sex: f.repete_sex ?? false,
+      repete_sab: f.repete_sab ?? false,
+      repete_dom: f.repete_dom ?? false,
+      horario: f.horario,
+    }));
+  }
+
   async calcularOfensivaAtual(usuarioId: number): Promise<number> {
+    const idBigInt = this.validarId(usuarioId);
     const atividades = await this.prisma.usuario_atividades.findMany({
-      where: { id_usuario: BigInt(usuarioId) },
+      where: { id_usuario: idBigInt },
       orderBy: { data_realizacao: 'desc' },
     }).catch(() => []);
 
