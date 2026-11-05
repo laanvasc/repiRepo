@@ -1,14 +1,13 @@
 import { useEffect, useState } from 'react';
 import { ActivityIndicator, StyleSheet, Text, View } from 'react-native';
-import Svg, { Circle, Line, Path } from 'react-native-svg';
+import Svg, { Circle, Line } from 'react-native-svg';
 import { api } from '@/services/api';
 
 const ORANGE = '#EE6C42';
-const PINK = '#F0B4A4';
 const LIME = '#DCEB52';
 const GRAY = '#D3D3D3'; 
 
-const CARD_HEIGHT = 370;
+const CARD_HEIGHT = 420;
 const weekDays = ['D', 'S', 'T', 'Q', 'Q', 'S', 'S'];
 
 export function MensalCard({ usuarioId }) {
@@ -38,8 +37,9 @@ export function MensalCard({ usuarioId }) {
           totalAtividades: data.totalAtividades ?? 0,
           diasConcluidos: data.diasConcluidos ?? [], 
           diasPassados: data.diasPassados ?? [],    
+          // Matriz de outubro limpa e sem dias duplicados
           weeks: data.weeks ?? [      
-            [27, 28, 29, 30, 1, 2, 3],
+            ['', '', '', '', 1, 2, 3],
             [4, 5, 6, 7, 8, 9, 10],
             [11, 12, 13, 14, 15, 16, 17],
             [18, 19, 20, 21, 22, 23, 24],
@@ -74,25 +74,6 @@ export function MensalCard({ usuarioId }) {
 
   return (
     <View style={styles.card}>
-      {/* ONDAS DE FUNDO */}
-      <Svg
-        width="100%"
-        height="100%"
-        viewBox="0 0 370 318"
-        preserveAspectRatio="none"
-        style={StyleSheet.absoluteFill}
-      >
-        <Path
-          d="M0 0 H370 V64 C300 64 250 20 190 20 C130 20 80 62 0 62 Z"
-          fill={PINK}
-        />
-        <Path
-          d="M0 145 C70 145 130 102 193 102 C255 102 300 145 370 145
-             V237 C300 237 255 195 193 195 C130 195 70 237 0 237 Z"
-          fill={PINK}
-        />
-      </Svg>
-
       {/* TÍTULO */}
       <Text style={styles.title}>Outubro 2026</Text>
 
@@ -132,6 +113,11 @@ export function MensalCard({ usuarioId }) {
         {dadosMensais.weeks.map((week, w) => (
           <View key={w} style={styles.weekRow}>
             {week.map((n, d) => {
+              // Se a célula estiver vazia (espaço em branco do início do mês), renderiza uma vista invisível para manter o alinhamento
+              if (n === '') {
+                return <View key={d} style={styles.column} />;
+              }
+
               const isDone = dadosMensais.diasConcluidos.includes(n);
               const isPast = !isDone && n < 29; 
 
@@ -226,13 +212,12 @@ const styles = StyleSheet.create({
   },
   weekRow: {
     flexDirection: 'row',
-    marginBottom: 18,
+    marginBottom: 22,
   },
   column: {
     flex: 1,
     alignItems: 'center',
   },
-  // Transformado em círculo perfeito (largura e altura iguais a 28, borderRadius 14)
   day: {
     width: 28,  
     height: 28, 

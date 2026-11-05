@@ -12,6 +12,9 @@ import { NotificationButton } from '@/components/ui/NotificationButton';
 import { WebBadge } from '@/components/web-badge';
 import Trofeu from '../../components/ui/Trofeu';
 
+import CardProgressoSemanal from '../../components/ui/CardProgressoSemana';
+import CardSemanaQuantAtividades from '../../components/ui/CardSemanaQuantAtividades';
+
 import { useAuth } from '@/context/AuthContext'; // <-- Importa o hook de autenticação
 import { BottomTabInset, MaxContentWidth, Spacing } from '@/constants/theme';
 import { api } from '@/services/api';
@@ -60,6 +63,8 @@ export default function PerfilScreen() {
           <ThemedView style={styles.cardsWrapper}>
             {/* Cards puxam dinamicamente através do usuarioId global */}
             <CardXpTotal usuarioId={usuarioId} />
+            <CardSemanaQuantAtividades usuarioId={usuarioId} />
+            <CardProgressoSemanal usuarioId={usuarioId} />
             <MensalCard usuarioId={usuarioId} />
           </ThemedView>
 
