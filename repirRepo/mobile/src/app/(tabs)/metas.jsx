@@ -42,12 +42,7 @@ export default function MetaScreen() {
             <CardMetasCompletas />
 
             {/* Card de XP Total */}
-            <CardXpTotal
-              nivel={7}
-              xpTotal={1250}
-              xpAtualNivel={250}
-              xpNecessarioNivel={500}
-            />
+            
 
             <ThemedText style={styles.centerText} themeColor="textSecondary">
               Metas da semana
@@ -58,9 +53,9 @@ export default function MetaScreen() {
                 tituloMeta="Fazer 3 atividades"
                 onPress={() => console.log('testando')}
               />
+              {/* <MetaCard tituloMeta="Fazer 3 atividades" />
               <MetaCard tituloMeta="Fazer 3 atividades" />
-              <MetaCard tituloMeta="Fazer 3 atividades" />
-              <MetaCard tituloMeta="Fazer 3 atividades" />
+              <MetaCard tituloMeta="Fazer 3 atividades" /> */}
             </ThemedView>
           </ThemedView>
 

@@ -1,4 +1,4 @@
- import {
+import {
   Inter_600SemiBold,
   Inter_700Bold,
   useFonts,
@@ -14,13 +14,7 @@ export default function ProximaAtividadeCard() {
 
   return (
     <View style={styles.card}>
-      {}
-      <Image
-        source={require('../assets/mascote/pose2-mascot2.svg')}
-        style={styles.mascot}
-        contentFit="contain"
-      />
-
+      {/* CONTEÚDO DE TEXTO À ESQUERDA */}
       <View style={styles.content}>
         <Text style={styles.title}>PRÓXIMA ATIVIDADE</Text>
 
@@ -30,7 +24,7 @@ export default function ProximaAtividadeCard() {
               <Path
                 d="M4 25H12L17 14L24 34L30 20L34 25H44"
                 fill="none"
-                stroke="#FFB4ED"
+                stroke="#EE6C42"
                 strokeWidth="3"
                 strokeLinecap="round"
                 strokeLinejoin="round"
@@ -38,35 +32,45 @@ export default function ProximaAtividadeCard() {
             </Svg>
           </View>
 
-          <Text style={styles.activity}>Treino quadriceps</Text>
+          <Text style={styles.activity} numberOfLines={1}>Treino quadriceps</Text>
         </View>
       </View>
+
+      {/* MASCOTE À DIREITA (Posicionado de forma segura sem estourar o layout) */}
+      <Image
+        source={require('../assets/mascote/pose2-mascot2.svg')}
+        style={styles.mascot}
+        contentFit="contain"
+      />
     </View>
   );
 }
 
 const styles = StyleSheet.create({
   card: {
-    width: 420,
-    height: 126,
-    backgroundColor: '#FFB4ED',
+    width: '100%',
+    height: 126, // Altura fixa controlada para o cartão não achatar
+    backgroundColor: '#FFB4ED', // Cor original do fundo do card
     borderRadius: 16,
+    padding: 16,
     overflow: 'hidden',
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
   },
 
   content: {
-    position: 'absolute',
-    left: 16,
-    top: 16,
+    flex: 1,
+    justifyContent: 'center',
+    zIndex: 1, // Garante que o texto fica por cima se necessário
   },
 
   title: {
     fontFamily: 'Inter_600SemiBold',
-    fontSize: 14,
-    lineHeight: 18,
+    fontSize: 13,
+    lineHeight: 16,
     color: '#000000',
-    marginBottom: 12,
-    textTransform: 'none',
+    marginBottom: 8,
   },
 
   activityRow: {
@@ -75,27 +79,26 @@ const styles = StyleSheet.create({
   },
 
   iconCircle: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
+    width: 38,
+    height: 38,
+    borderRadius: 19,
     backgroundColor: '#FFFFFF',
     alignItems: 'center',
     justifyContent: 'center',
-    marginRight: 12,
+    marginRight: 10,
   },
 
   activity: {
     fontFamily: 'Inter_700Bold',
-    fontSize: 16,
-    lineHeight: 20,
+    fontSize: 15,
+    lineHeight: 18,
     color: '#000000',
+    flexShrink: 1, // Evita que texto grande empurre o layout para fora
   },
 
   mascot: {
-    position: 'absolute',
-    right: 30,
-    top: 13,
-    width: 100,
-    height: 100,
+    width: 95,
+    height: 95,
+    marginLeft: 8,
   },
 });

@@ -6,46 +6,41 @@ import {
   Inter_700Bold,
   useFonts,
 } from '@expo-google-fonts/inter';
-
-const API_URL = 'http://192.168.0.119:3000';
+import { api } from '../../services/api'; // Importa a tua instância centralizada do Axios
 
 async function fetchUsuarioOfensiva(usuarioId) {
   try {
-    const url = `${API_URL}/usuarios/${usuarioId}/ofensiva`;
-    console.log('A chamar API de ofensiva em:', url);
-
-    const response = await fetch(url);
-    
-    if (!response.ok) {
-      const errorText = await response.text();
-      console.log(`[HTTP ${response.status}] Erro do servidor:`, errorText);
-      throw new Error('Erro na resposta do servidor');
-    }
-
-    const data = await response.json();
-    console.log('Dados de ofensiva recebidos com sucesso:', data);
-    return data;
+    console.log(`A chamar API de ofensiva para o ID: ${usuarioId}`);
+    const response = await api.get(`/usuarios/${usuarioId}/ofensiva`);
+    console.log('Dados de ofensiva recebidos com sucesso:', response.data);
+    return response.data;
   } catch (err) {
     console.error('Erro detalhado de conexão:', err.message);
     throw err;
   }
 }
 
-export function CardOfensiva({ usuarioId = 2 }) {
+export function CardOfensiva({ usuarioId }) {
   const [dados, setDados] = useState(null);
   const [loading, setLoading] = useState(true);
   const [erro, setErro] = useState(false);
   const [fontsLoaded] = useFonts({ Inter_600SemiBold, Inter_700Bold });
 
   useEffect(() => {
+    // Se o ID ainda for null ou undefined, nem tenta chamar a API!
+    if (!usuarioId) {
+      setLoading(false);
+      return; 
+    }
+
     async function carregarDados() {
       try {
         setLoading(true);
         setErro(false);
-        const data = await fetchUsuarioOfensiva(usuarioId);
-        setDados(data);
-      } catch (error) {
-        console.error('Erro ao ligar ao backend:', error);
+        const resposta = await fetchUsuarioOfensiva(usuarioId);
+        setDados(resposta); // <-- Corrigido para usar setDados em vez de setOfensiva
+      } catch (err) {
+        console.error('Erro ao carregar ofensiva:', err);
         setErro(true);
       } finally {
         setLoading(false);
@@ -75,7 +70,6 @@ export function CardOfensiva({ usuarioId = 2 }) {
     );
   }
 
-  // Extrai a ofensiva atual retornada pelo NestJS com valor de fallback seguro
   const diasOfensiva = dados.ofensivaAtual ?? 0;
 
   return (

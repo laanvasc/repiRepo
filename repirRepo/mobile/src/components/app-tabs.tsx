@@ -22,7 +22,7 @@ export default function AppTabs() {
         name="home"
         options={{
           tabBarLabel: ({ focused, color }) =>
-            focused ? <Text style={[styles.tabBarLabel, { color }]}>Início</Text> : null,
+            focused ? <Text style={[styles.tabBarLabel, { color }]}></Text> : null,
           tabBarIcon: ({ color }) => (
             <Image
               source={require('../../assets/images/tabIcons/icone_home3x.png')}
@@ -38,7 +38,7 @@ export default function AppTabs() {
         name="atividades"
         options={{
           tabBarLabel: ({ focused, color }) =>
-            focused ? <Text style={[styles.tabBarLabel, { color }]}>Atividades</Text> : null,
+            focused ? <Text style={[styles.tabBarLabel, { color }]}></Text> : null,
           tabBarIcon: ({ color }) => (
             <Image
               source={require('../../assets/images/tabIcons/icone_atividades3x.png')}
@@ -49,7 +49,7 @@ export default function AppTabs() {
         }}
       />
 
-      {/* 3. Botão Central Flutuante (+) */}
+      {/* 3. Botão Central Flutuante (+) REMOVIDO
       <Tabs.Screen
         name="cadastrarAtividade"
         options={{
@@ -68,14 +68,14 @@ export default function AppTabs() {
             </Pressable>
           ),
         }}
-      />
+      /> */}
 
       {/* 4. Metas */}
       <Tabs.Screen
         name="metas"
         options={{
           tabBarLabel: ({ focused, color }) =>
-            focused ? <Text style={[styles.tabBarLabel, { color }]}>Metas</Text> : null,
+            focused ? <Text style={[styles.tabBarLabel, { color }]}></Text> : null,
           tabBarIcon: ({ color }) => (
             <Image
               source={require('../../assets/images/tabIcons/icone_metas3x.png')}
@@ -91,7 +91,7 @@ export default function AppTabs() {
         name="perfil"
         options={{
           tabBarLabel: ({ focused, color }) =>
-            focused ? <Text style={[styles.tabBarLabel, { color }]}>Perfil</Text> : null,
+            focused ? <Text style={[styles.tabBarLabel, { color }]}></Text> : null,
           tabBarIcon: ({ color }) => (
             <Image
               source={require('../../assets/images/tabIcons/icone_perfil3x.png')}

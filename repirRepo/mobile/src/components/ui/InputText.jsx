@@ -38,7 +38,7 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: '600',
     marginBottom: 6,
-    color: '#9CA3AF',
+    color: '#222222',
   },
   input: {
     borderWidth: 2,

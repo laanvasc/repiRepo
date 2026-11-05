@@ -1,54 +1,79 @@
+import React, { useState } from 'react';
 import { Image } from 'expo-image';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
 export function CardAtividade({
-  titulo = 'Treino Abdominal',
-  categoria = 'Corrida',
-  concluido = true,
-  icone = require('@/components/assets/icones/icone-notificacao3x.png'), // Ajuste para o ícone desejado
+  titulo = 'Atividade',
+  icone = require('@/components/assets/mascote/pose1-mascot1.svg'),
+  diasSemana = {
+    seg: false,
+    ter: false,
+    qua: false,
+    qui: false,
+    sex: false,
+    sab: false,
+    dom: false,
+  },
   onPress,
 }) {
+  const [expandido, setExpandido] = useState(false);
+
+  const dias = [
+    { key: 'seg', label: 'Seg', ativo: diasSemana.seg },
+    { key: 'ter', label: 'Ter', ativo: diasSemana.ter },
+    { key: 'qua', label: 'Qua', ativo: diasSemana.qua },
+    { key: 'qui', label: 'Qui', ativo: diasSemana.qui },
+    { key: 'sex', label: 'Sex', ativo: diasSemana.sex },
+    { key: 'sab', label: 'Sab', ativo: diasSemana.sab },
+    { key: 'dom', label: 'Dom', ativo: diasSemana.dom },
+  ];
+
   return (
     <Pressable
-      onPress={onPress}
-      style={[
-        styles.card,
-        concluido ? styles.cardConcluido : styles.cardNaoConcluido,
-      ]}
+      onPress={() => {
+        setExpandido(!expandido);
+        if (onPress) onPress();
+      }}
+      style={styles.card}
     >
-      {/* Círculo Esquerdo com Ícone */}
-      <View style={styles.iconContainer}>
-        <Image source={icone} contentFit="contain" style={styles.icon} />
-      </View>
+      <View style={styles.headerRow}>
+        <View style={styles.iconContainer}>
+          <Image source={icone} contentFit="contain" style={styles.icon} />
+        </View>
 
-      {/* Conteúdo Central: Título e Tag de Categoria */}
-      <View style={styles.contentContainer}>
-        <Text
-          style={[
-            styles.titulo,
-            concluido ? styles.textEscuro : styles.textClaro,
-          ]}
-          numberOfLines={1}
-        >
-          {titulo}
-        </Text>
+        <View style={styles.contentContainer}>
+          <Text style={styles.titulo} numberOfLines={1}>
+            {titulo}
+          </Text>
+        </View>
 
-        <View style={styles.badgeCategoria}>
-          <Text style={styles.badgeText}>{categoria}</Text>
+        <View style={styles.statusContainer}>
+          <Text style={styles.statusIcon}>{expandido ? '∧' : '∨'}</Text>
         </View>
       </View>
 
-      {/* Ícone de Status do Lado Direito (Check ou X) */}
-      <View style={styles.statusContainer}>
-        <Text
-          style={[
-            styles.statusIcon,
-            concluido ? styles.textEscuro : styles.textClaro,
-          ]}
-        >
-          {concluido ? '✓' : '✕'}
-        </Text>
-      </View>
+      {expandido && (
+        <View style={styles.diasContainer}>
+          {dias.map((dia) => (
+            <View
+              key={dia.key}
+              style={[
+                styles.diaPill,
+                dia.ativo ? styles.diaAtivo : styles.diaInativo,
+              ]}
+            >
+              <Text
+                style={[
+                  styles.diaText,
+                  dia.ativo ? styles.diaTextAtivo : styles.diaTextInativo,
+                ]}
+              >
+                {dia.label}
+              </Text>
+            </View>
+          ))}
+        </View>
+      )}
     </Pressable>
   );
 }
@@ -58,18 +83,17 @@ export default CardAtividade;
 const styles = StyleSheet.create({
   card: {
     width: '100%',
-    flexDirection: 'row',
-    alignItems: 'center',
+    backgroundColor: '#D2F522',
+    borderRadius: 32,
     paddingVertical: 14,
     paddingHorizontal: 16,
-    borderRadius: 40, // Formato pílula arredondado como na imagem
     marginBottom: 12,
+    overflow: 'hidden',
   },
-  cardConcluido: {
-    backgroundColor: '#D2F522', // Verde-lima vibrante
-  },
-  cardNaoConcluido: {
-    backgroundColor: '#FF5E57', // Vermelho/Laranja vibrante
+  headerRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
   },
   iconContainer: {
     width: 48,
@@ -81,42 +105,57 @@ const styles = StyleSheet.create({
     marginRight: 14,
   },
   icon: {
-    width: 24,
-    height: 24,
+    width: 32,
+    height: 32,
   },
   contentContainer: {
     flex: 1,
     justifyContent: 'center',
-    gap: 4,
   },
   titulo: {
-    fontSize: 18,
+    fontSize: 20,
     fontWeight: '800',
-  },
-  badgeCategoria: {
-    alignSelf: 'flex-start',
-    backgroundColor: '#FFFFFF',
-    paddingHorizontal: 12,
-    paddingVertical: 4,
-    borderRadius: 16,
-  },
-  badgeText: {
-    fontSize: 13,
-    fontWeight: '700',
-    color: '#4A5568',
+    color: '#151522',
   },
   statusContainer: {
     marginLeft: 12,
     paddingRight: 6,
   },
   statusIcon: {
-    fontSize: 22,
+    fontSize: 20,
     fontWeight: '900',
-  },
-  textEscuro: {
     color: '#151522',
   },
-  textClaro: {
-    color: '#FFFFFF',
+  diasContainer: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginTop: 16,
+    paddingTop: 12,
+    borderTopWidth: 1,
+    borderTopColor: 'rgba(0, 0, 0, 0.06)',
+  },
+  diaPill: {
+    width: 36,
+    height: 54,
+    borderRadius: 18,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 6,
+  },
+  diaAtivo: {
+    backgroundColor: '#FFFFFF',
+  },
+  diaInativo: {
+    backgroundColor: 'transparent',
+  },
+  diaText: {
+    fontSize: 12,
+    fontWeight: '700',
+  },
+  diaTextAtivo: {
+    color: '#151522',
+  },
+  diaTextInativo: {
+    color: 'rgba(21, 21, 34, 0.4)',
   },
 });

@@ -1,11 +1,11 @@
-import { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Platform, ScrollView, StyleSheet } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { WebBadge } from '@/components/web-badge';
 import { BottomTabInset, MaxContentWidth, Spacing } from '@/constants/theme';
+import { api } from '@/services/api';
 
 import HeaderAreaView from '@/components/header-area-view';
 import { NotificationButton } from '@/components/ui/NotificationButton';
@@ -17,9 +17,40 @@ import CardOfensiva from '../../components/ui/CardOfensiva';
 import CardProgressoSemanal from '../../components/ui/CardProgressoSemana';
 import CardSemanaQuantAtividades from '../../components/ui/CardSemanaQuantAtividades';
 
+import { useAuth } from '@/context/AuthContext'; // <-- 1. Importa o hook de autenticação
+
 export default function HomeScreen() {
-  const [email, setEmail] = useState('');
-  const [senha, setSenha] = useState('');
+  const { usuarioId } = useAuth();
+  console.log('🏠 HomeScreen renderizada com o usuarioId:', usuarioId);
+
+  const [primeiroNome, setPrimeiroNome] = useState('Usuário');
+
+  // Busca o nome do usuário logado ao carregar a Home
+useEffect(() => {
+    let isMounted = true;
+
+    async function carregarNomeUsuario() {
+      if (!usuarioId) return; // <-- Garante que só executa se o ID existir
+      
+      try {
+        const response = await api.get(`/usuarios/${usuarioId}/nome`);
+        if (isMounted) {
+          const nomeCompleto = typeof response.data === 'string' 
+            ? response.data 
+            : (response.data?.nome || response.data?.nome_usuario || 'Usuário');
+          setPrimeiroNome(nomeCompleto.trim().split(' ')[0]);
+        }
+      } catch (err) {
+        if (isMounted) console.error('Erro ao buscar o nome:', err);
+      }
+    }
+
+    carregarNomeUsuario();
+
+    return () => {
+      isMounted = false;
+    };
+  }, [usuarioId]);
 
   return (
     <ThemedView style={styles.container}>
@@ -29,9 +60,9 @@ export default function HomeScreen() {
           contentContainerStyle={styles.scrollContent}
           showsVerticalScrollIndicator={false}
         >
-          {/* Header dentro do ScrollView para rolar junto com a página */}
+          {/* Header dinâmico exibindo apenas o primeiro nome */}
           <HeaderAreaView 
-            title="Olá, João!" 
+            title={`Olá, ${primeiroNome}!`} 
             subtitle="Pronto para sua próxima meta?"
             buttonIcon={
               <NotificationButton onPress={() => console.log('Notificações clicadas!')} />
@@ -42,24 +73,15 @@ export default function HomeScreen() {
             {/* Conteúdo hero */}
           </ThemedView>
 
-          <ThemedText type="code" style={styles.code}>
-            
-            
-            {/* ta com integração parcial do backend */}
-            <CardOfensiva/> 
-
-            <CardSemanaQuantAtividades/>
-
-            <CardProgressoSemanal/>
-            
-            <ProximaAtividadeCard />
-
-            <CardConquistasDesbloqueadas/>
-
-            <CardDestaquesSemanas/>
-          </ThemedText>
-
-          
+          <ThemedView style={styles.cardsContainer}>
+            {/* 4. Passa o usuarioId global para todos os cartões */}
+            <CardOfensiva usuarioId={usuarioId} /> 
+            {/* <CardSemanaQuantAtividades usuarioId={usuarioId} /> */}
+            {/* <CardProgressoSemanal usuarioId={usuarioId} /> */}
+            <ProximaAtividadeCard usuarioId={usuarioId} />
+            <CardConquistasDesbloqueadas usuarioId={usuarioId} />
+            <CardDestaquesSemanas usuarioId={usuarioId} />
+          </ThemedView>
 
           {Platform.OS === 'web' && <WebBadge />}
         </ScrollView>
@@ -83,7 +105,7 @@ const styles = StyleSheet.create({
     width: '100%',
   },
   scrollContent: {
-    paddingHorizontal: Spacing.four, // Garante as margens laterais uniformes para todo o conteúdo (inclusive o header)
+    paddingHorizontal: Spacing.four,
     paddingTop: Spacing.two,
     paddingBottom: BottomTabInset + Spacing.three,
     gap: Spacing.three,
@@ -94,8 +116,8 @@ const styles = StyleSheet.create({
     paddingHorizontal: Spacing.four,
     gap: Spacing.four,
   },
-  code: {
-    textTransform: 'uppercase',
+  cardsContainer: {
+    width: '100%',
     gap: Spacing.three,
   },
 });

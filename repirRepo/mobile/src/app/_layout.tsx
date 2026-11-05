@@ -4,6 +4,7 @@ import { useEffect } from 'react';
 import { Platform, StyleSheet, useColorScheme, View } from 'react-native';
 
 import { AnimatedSplashOverlay } from '@/components/animated-icon';
+import { AuthProvider } from '../context/AuthContext'; // <-- Importa o AuthProvider
 
 SplashScreen.preventAutoHideAsync();
 
@@ -33,16 +34,18 @@ export default function RootLayout() {
   }, []);
 
   return (
-    <ThemeProvider value={theme}>
-      <View style={styles.container}>
-        <Stack initialRouteName="(auth)" screenOptions={{ headerShown: false }}>
-          <Stack.Screen name="(auth)" />
-          <Stack.Screen name="(tabs)" />
-        </Stack>
+    <AuthProvider> {/* <-- Envolve toda a aplicação para gerir o ID globalmente */}
+      <ThemeProvider value={theme}>
+        <View style={styles.container}>
+          <Stack initialRouteName="(auth)" screenOptions={{ headerShown: false }}>
+            <Stack.Screen name="(auth)" />
+            <Stack.Screen name="(tabs)" />
+          </Stack>
 
-        <AnimatedSplashOverlay />
-      </View>
-    </ThemeProvider>
+          <AnimatedSplashOverlay />
+        </View>
+      </ThemeProvider>
+    </AuthProvider>
   );
 }
 

@@ -1,10 +1,23 @@
-// mobile/src/services/api.js
-const API_URL = 'http://192.168.0.119:3000'; // Altere para seu IP se testar no celular físico
+import axios from 'axios';
 
+// Podes mudar dinamicamente conforme o ambiente (ex: __DEV__ para desenvolvimento)
+const API_URL = 'http://192.168.100.31:3000';
+
+export const api = axios.create({
+  baseURL: API_URL,
+  timeout: 10000,
+  headers: {
+    'Content-Type': 'application/json',
+  },
+});
+
+// Exemplo de função usando a instância centralizada
 export async function fetchUsuarioXp(usuarioId) {
-  const response = await fetch(`${API_URL}/usuarios/${usuarioId}/xp`);
-  if (!response.ok) {
+  try {
+    const response = await api.get(`/usuarios/${usuarioId}/xp`);
+    return response.data;
+  } catch (err) {
+    console.error('Erro detalhado de conexão:', err.message);
     throw new Error('Erro ao buscar dados do usuário');
   }
-  return await response.json();
 }
