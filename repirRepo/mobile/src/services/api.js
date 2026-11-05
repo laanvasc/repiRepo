@@ -1,17 +1,16 @@
 import axios from 'axios';
 
-// Podes mudar dinamicamente conforme o ambiente (ex: __DEV__ para desenvolvimento)
-const API_URL = 'http://192.168.100.31:3000';
+// Aponta diretamente para o teu backend em produção no Render
+const API_URL = 'https://repirepo.onrender.com';
 
 export const api = axios.create({
   baseURL: API_URL,
-  timeout: 10000,
+  timeout: 30000, // Aumentado para 30 segundos para dar tempo ao Render de "acordar" se estiver em descanso
   headers: {
     'Content-Type': 'application/json',
   },
 });
 
-// Exemplo de função usando a instância centralizada
 export async function fetchUsuarioXp(usuarioId) {
   try {
     const response = await api.get(`/usuarios/${usuarioId}/xp`);
