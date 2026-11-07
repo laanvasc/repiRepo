@@ -47,4 +47,10 @@ export class AppController {
   async getDadosMensais(@Param('id') id: string) {
     return this.appService.getDadosMensais(Number(id));
   }
+
+  @Post()
+async criarUsuario(@Body() body: { nome: string; email: string; senha?: string }) {
+  return this.appService.criarUsuario(body.nome, body.email, body.senha);
+}
+
 }

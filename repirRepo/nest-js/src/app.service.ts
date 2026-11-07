@@ -279,4 +279,39 @@ async getAtividadesFrequentesUsuario(id: number) {
 
     return ofensiva;
   }
+
+  async criarUsuario(nome: string, email: string, senha?: string) {
+    const emailNormalizado = email.trim().toLowerCase();
+
+    // Verifica se já existe um utilizador com este e-mail
+    const usuarioExistente = await this.prisma.usuario.findFirst({
+      where: { email: emailNormalizado },
+    });
+
+    if (usuarioExistente) {
+      throw new BadRequestException('Este e-mail já está registado.');
+    }
+
+    // Cria o novo utilizador no Supabase via Prisma
+    const novoUsuario = await this.prisma.usuario.create({
+      data: {
+        nome: nome.trim(),
+        email: emailNormalizado,
+        passwordHash: senha || '', // Guarda a senha (ou hash dependendo da tua lógica)
+        xp: 0,
+        ofensivaAtual: 0,
+        recordeMaximo: 0,
+      },
+    });
+
+    return {
+      mensagem: 'Usuário cadastrado com sucesso!',
+      usuario: {
+        id: Number(novoUsuario.id),
+        nome: novoUsuario.nome,
+        email: novoUsuario.email,
+      },
+    };
+  }
+
 }
