@@ -1,11 +1,11 @@
 import axios from 'axios';
 
-// Aponta diretamente para o teu backend em produção no Render
-const API_URL = 'https://repirepo.onrender.com';
+// Define o URL para o Render (podes trocar de volta para 'http://localhost:3000' se precisares de testar localmente)
+const API_URL = 'https://repirepo.onrender.com'; 
 
 export const api = axios.create({
   baseURL: API_URL,
-  timeout: 30000, // Aumentado para 30 segundos para dar tempo ao Render de "acordar" se estiver em descanso
+  timeout: 10000, // 10 segundos é suficiente
   headers: {
     'Content-Type': 'application/json',
   },
