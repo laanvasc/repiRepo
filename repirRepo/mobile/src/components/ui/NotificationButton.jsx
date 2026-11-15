@@ -1,14 +1,25 @@
+import { router } from 'expo-router';
 import { Image, StyleSheet, TouchableOpacity, View } from 'react-native';
 
 // Importação do ícone local (ajuste o caminho de acordo com a sua estrutura de pastas)
 import NotificacaoIcone from '../assets/icones/icone-notificacao3x.png';
 
 export function NotificationButton({ onPress, hasUnread = false }) {
+  const handlePress = () => {
+    if (onPress) {
+      onPress();
+    } else {
+      router.navigate('/notificacoes');
+    }
+  };
+
   return (
     <TouchableOpacity 
       style={styles.button} 
-      onPress={onPress} 
+      onPress={handlePress} 
       activeOpacity={0.7}
+      accessibilityRole="button"
+      accessibilityLabel="Notificações"
     >
       {/* Ícone usando a imagem local */}
       <Image 
@@ -22,6 +33,8 @@ export function NotificationButton({ onPress, hasUnread = false }) {
     </TouchableOpacity>
   );
 }
+
+export default NotificationButton;
 
 const styles = StyleSheet.create({
   button: {

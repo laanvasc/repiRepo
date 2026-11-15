@@ -181,6 +181,55 @@ export class AppService {
     };
   }
 
+async criarAtividadeFrequente(usuarioId: number, dto: {
+    nome_atividade: string;
+    categoria?: string;
+    repete_seg: boolean;
+    repete_ter: boolean;
+    repete_qua: boolean;
+    repete_qui: boolean;
+    repete_sex: boolean;
+    repete_sab: boolean;
+    repete_dom: boolean;
+    horario?: string;
+  }) {
+    const idBigInt = this.validarId(usuarioId);
+
+    // 1. Cria a atividade mestre deixando o ID em autoincrement (sem passar id_atividade)
+    const atividadeMestre = await this.prisma.atividades.create({
+      data: {
+        nome_atividade: dto.nome_atividade.trim(),
+      },
+    });
+
+    // 2. Converte a string de horário ("HH:mm") para o formato de Data do Prisma (@db.Time)
+    let horarioDate = null;
+    if (dto.horario) {
+      horarioDate = new Date(`1970-01-01T${dto.horario}:00Z`);
+    }
+
+    // 3. Cria o registo na tabela de ligação 'atividade_frequente'
+    const novaFrequencia = await this.prisma.atividade_frequente.create({
+      data: {
+        id_usuario: Number(idBigInt),
+        id_atividade: atividadeMestre.id_atividade,
+        repete_seg: dto.repete_seg,
+        repete_ter: dto.repete_ter,
+        repete_qua: dto.repete_qua,
+        repete_qui: dto.repete_qui,
+        repete_sex: dto.repete_sex,
+        repete_sab: dto.repete_sab,
+        repete_dom: dto.repete_dom,
+        horario: horarioDate,
+      },
+    });
+
+    return {
+      mensagem: 'Atividade frequente criada com sucesso!',
+      atividade: novaFrequencia,
+    };
+  }
+
   // ==========================================
   // NOVOS MÉTODOS PARA O MENSAL CARD & OFENSIVA
   // ==========================================

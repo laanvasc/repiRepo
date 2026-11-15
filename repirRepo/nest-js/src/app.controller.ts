@@ -26,6 +26,14 @@ export class AppController {
     return this.appService.getAtividadesFrequentesUsuario(Number(id));
   }
 
+@Post(':id/atividades-frequentes')
+async criarAtividadeFrequente(
+  @Param('id') id: string,
+  @Body() body: any,
+) {
+  return this.appService.criarAtividadeFrequente(Number(id), body);
+}
+
   // Rota para verificar e atualizar a ofensiva do usuário
   @Get(':id/ofensiva') 
   async atualizarOfensiva(@Param('id') id: string) {

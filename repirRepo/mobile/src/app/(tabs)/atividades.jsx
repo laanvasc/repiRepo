@@ -1,43 +1,56 @@
-import React, { useEffect, useState } from 'react';
+import { Ionicons } from '@expo/vector-icons';
 import { Image } from 'expo-image';
-import { Platform, ScrollView, StyleSheet, ActivityIndicator, Text, View, Alert } from 'react-native';
+import { router } from 'expo-router';
+import { useCallback, useEffect, useState } from 'react';
+import { ActivityIndicator, Alert, Platform, RefreshControl, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import HeaderAreaView from '@/components/header-area-view';
+import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
+import AtividadeFrequenteCard from '@/components/ui/AtividadeFrequenteCard';
+import Button from '@/components/ui/Button';
 import { NotificationButton } from '@/components/ui/NotificationButton';
 import { WebBadge } from '@/components/web-badge';
-import Button from '@/components/ui/Button';
-import AtividadeFrequenteCard from '@/components/ui/AtividadeFrequenteCard';
 
 import { BottomTabInset, MaxContentWidth, Spacing } from '@/constants/theme';
-import { api } from '@/services/api';
 import { useAuth } from '@/context/AuthContext';
+import { api } from '@/services/api';
 
 export default function AtividadesScreen() {
   const { usuarioId } = useAuth();
   const [atividades, setAtividades] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
 
-  useEffect(() => {
-    async function carregarAtividadesFrequentes() {
-      if (!usuarioId) {
-        setLoading(false);
-        return;
-      }
-
-      try {
-        setLoading(true);
-        const response = await api.get(`/usuarios/${usuarioId}/atividades-frequentes`);
-        setAtividades(response.data || []);
-      } catch (err) {
-        console.error('Erro ao carregar atividades frequentes:', err.response?.data || err.message);
-      } finally {
-        setLoading(false);
-      }
+  const carregarAtividadesFrequentes = async () => {
+    if (!usuarioId) {
+      setLoading(false);
+      return;
     }
 
+    try {
+      const response = await api.get(`/usuarios/${usuarioId}/atividades-frequentes`);
+      setAtividades(response.data || []);
+    } catch (err) {
+      console.error('Erro ao carregar atividades frequentes:', err.response?.data || err.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    setLoading(true);
     carregarAtividadesFrequentes();
+  }, [usuarioId]);
+
+  // Função disparada ao puxar o ecrã para cima (Pull-to-Refresh)
+  const onRefresh = useCallback(async () => {
+    setRefreshing(true);
+    await carregarAtividadesFrequentes();
+    setTimeout(() => {
+      setRefreshing(false);
+    }, 800);
   }, [usuarioId]);
 
   const handleFinalizarAtividades = async () => {
@@ -62,20 +75,31 @@ export default function AtividadesScreen() {
       />
 
       <SafeAreaView style={styles.safeArea} edges={['top', 'left', 'right']}>
-        <HeaderAreaView
-          title="Suas atividades"
-          buttonIcon={
-            <NotificationButton
-              onPress={() => console.log('Notificações clicadas!')}
-            />
-          }
-        />
+        {/* Header Fixo com o título e notificações corretas */}
+        <ThemedView style={styles.headerContainer}>
+          <HeaderAreaView
+            title="Suas atividades"
+            buttonIcon={
+              <NotificationButton
+                onPress={() => router.push('/notificacoes')}
+              />
+            }
+          />
+        </ThemedView>
 
         <ScrollView
           style={styles.scroll}
           contentContainerStyle={styles.scrollContent}
           showsVerticalScrollIndicator={false}
           bounces={true}
+          refreshControl={
+            <RefreshControl
+              refreshing={refreshing}
+              onRefresh={onRefresh}
+              tintColor="#FF5733"
+              colors={['#FF5733']}
+            />
+          }
         >
           {loading ? (
             <View style={styles.loaderContainer}>
@@ -98,8 +122,23 @@ export default function AtividadesScreen() {
             </ThemedView>
           )}
 
+          {/* Botão corrigido com o caminho absoluto correto da aba */}
+          <TouchableOpacity 
+            style={styles.addBottomButton}
+            onPress={() => router.push('/cadastrarAtividade')}
+            activeOpacity={0.8}
+          >
+            <Ionicons name="add-circle-outline" size={20} color="#FF5733" />
+            <Text style={styles.addBottomButtonText}>Adicionar nova atividade</Text>
+          </TouchableOpacity>
+
           <ThemedView style={styles.buttonContainer}>
             <Button titulo="Finalizar atividades diárias" onPress={handleFinalizarAtividades} />
+          </ThemedView>
+
+          {/* Indicador visual de fim de conteúdo */}
+          <ThemedView style={styles.footerContainer}>
+            <ThemedText style={styles.footerText}>✨ Chegaste ao fim das atividades</ThemedText>
           </ThemedView>
 
           {Platform.OS === 'web' && <WebBadge />}
@@ -113,25 +152,24 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
   },
-  backgroundImage: {
-    // width: '100%',
-    // height: '100%',
-    // transform: [{ scale: 1.05 }],
-  },
+  backgroundImage: {},
   safeArea: {
     flex: 1,
-    paddingHorizontal: Spacing.four,
-    alignItems: 'center',
-    gap: Spacing.three,
     maxWidth: MaxContentWidth,
     width: '100%',
     alignSelf: 'center',
+  },
+  headerContainer: {
+    width: '100%',
+    paddingHorizontal: Spacing.four,
+    backgroundColor: 'transparent',
   },
   scroll: {
     width: '100%',
   },
   scrollContent: {
-    paddingVertical: Spacing.two,
+    paddingHorizontal: Spacing.four,
+    paddingTop: Spacing.one,
     gap: Spacing.three,
     paddingBottom: BottomTabInset + Spacing.five,
   },
@@ -140,15 +178,35 @@ const styles = StyleSheet.create({
     backgroundColor: 'transparent',
     width: '100%',
   },
+  addBottomButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    paddingVertical: 14,
+    borderRadius: 12,
+    borderWidth: 1.5,
+    borderColor: '#FF5733',
+    borderStyle: 'dashed',
+    backgroundColor: 'transparent',
+    width: '100%',
+    marginTop: Spacing.one,
+  },
+  addBottomButtonText: {
+    fontSize: 15,
+    fontWeight: '600',
+    color: '#FF5733',
+  },
   buttonContainer: {
     backgroundColor: 'transparent',
-    marginTop: Spacing.two,
+    marginTop: Spacing.one,
     width: '100%',
   },
   loaderContainer: {
     paddingVertical: Spacing.five,
     alignItems: 'center',
     justifyContent: 'center',
+    backgroundColor: 'transparent',
   },
   emptyText: {
     textAlign: 'center',
@@ -156,5 +214,17 @@ const styles = StyleSheet.create({
     color: '#333',
     marginTop: Spacing.two,
     fontWeight: '600',
+  },
+  footerContainer: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: Spacing.two,
+    marginTop: Spacing.one,
+    backgroundColor: 'transparent',
+  },
+  footerText: {
+    fontSize: 13,
+    color: '#888888',
+    opacity: 0.8,
   },
 });

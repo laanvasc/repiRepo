@@ -69,7 +69,7 @@ export default function LoginScreen() {
             >
                 <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
                     <Image
-                        source={require('@/components/assets/mascote/pose2-mascot2.svg')}
+                        source={require('@/components/assets/mascote/pose1-mascot1.svg')}
                         contentFit="contain"
                         style={styles.mascot}
                     />
@@ -95,9 +95,7 @@ export default function LoginScreen() {
                             textContentType="password"
                             labelStyle={styles.label}
                         />
-                        <Pressable onPress={() => router.push('/esqueci-senha')} style={styles.forgotLink}>
-                            <Text style={styles.linkText}>Esqueci minha senha</Text>
-                        </Pressable>
+                        
 
                         {loading ? (
                             <View style={styles.loaderContainer}>
@@ -110,6 +108,11 @@ export default function LoginScreen() {
                         <Pressable onPress={() => router.push('/cadastro')} style={styles.createLink}>
                             <Text style={styles.linkText}>Criar conta</Text>
                         </Pressable>
+
+                        <Pressable onPress={() => router.push('/esqueci-senha')} style={styles.createLink}>
+                            <Text style={styles.linkText}>Esqueci minha senha</Text>
+                        </Pressable>
+
                     </View>
                 </ScrollView>
             </KeyboardAvoidingView>
@@ -133,8 +136,8 @@ const styles = StyleSheet.create({
         paddingVertical: 24,
     },
     mascot: {
-        width: 80,
-        height: 80,
+        width: 160,
+        height: 160,
         marginBottom: 12,
     },
     title: {

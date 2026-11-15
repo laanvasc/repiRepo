@@ -41,7 +41,7 @@ export default function NotificacoesScreen() {
       <SafeAreaView style={styles.safeArea} edges={['top', 'left', 'right']}>
         {/* Header da Tela */}
         <ThemedView style={styles.headerContainer}>
-          <HeaderAreaView title="Notificações" />
+          <HeaderAreaView title="Notificações" showBackButton={true} />
         </ThemedView>
 
         {/* Lista de Notificações com Scroll */}

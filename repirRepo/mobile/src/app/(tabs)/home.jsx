@@ -1,11 +1,13 @@
-import React, { useEffect, useState } from 'react';
-import { Platform, ScrollView, StyleSheet } from 'react-native';
+import { useCallback, useEffect, useState } from 'react';
+import { Platform, RefreshControl, ScrollView, StyleSheet, Text } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { ThemedView } from '@/components/themed-view';
 import { WebBadge } from '@/components/web-badge';
 import { BottomTabInset, MaxContentWidth, Spacing } from '@/constants/theme';
 import { api } from '@/services/api';
+
+import { router } from 'expo-router';
 
 import HeaderAreaView from '@/components/header-area-view';
 import { NotificationButton } from '@/components/ui/NotificationButton';
@@ -14,73 +16,88 @@ import ProximaAtividadeCard from '@/components/ui/ProximaAtividadeCard';
 import { CardConquistasDesbloqueadas } from '../../components/ui/CardConquistasDesbloqueadas';
 import CardDestaquesSemanas from '../../components/ui/CardDestaquesSemana';
 import CardOfensiva from '../../components/ui/CardOfensiva';
-import CardProgressoSemanal from '../../components/ui/CardProgressoSemana';
-import CardSemanaQuantAtividades from '../../components/ui/CardSemanaQuantAtividades';
 
-import { useAuth } from '@/context/AuthContext'; // <-- 1. Importa o hook de autenticação
+import { useAuth } from '@/context/AuthContext';
 
 export default function HomeScreen() {
   const { usuarioId } = useAuth();
   console.log('🏠 HomeScreen renderizada com o usuarioId:', usuarioId);
 
   const [primeiroNome, setPrimeiroNome] = useState('Usuário');
+  const [refreshing, setRefreshing] = useState(false);
+
+  // Função para buscar o nome do utilizador
+  const carregarNomeUsuario = async () => {
+    if (!usuarioId) return;
+    
+    try {
+      const response = await api.get(`/usuarios/${usuarioId}/nome`);
+      const nomeCompleto = typeof response.data === 'string' 
+        ? response.data 
+        : (response.data?.nome || response.data?.nome_usuario || 'Usuário');
+      setPrimeiroNome(nomeCompleto.trim().split(' ')[0]);
+    } catch (err) {
+      console.error('Erro ao buscar o nome:', err);
+    }
+  };
 
   // Busca o nome do usuário logado ao carregar a Home
-useEffect(() => {
-    let isMounted = true;
-
-    async function carregarNomeUsuario() {
-      if (!usuarioId) return; // <-- Garante que só executa se o ID existir
-      
-      try {
-        const response = await api.get(`/usuarios/${usuarioId}/nome`);
-        if (isMounted) {
-          const nomeCompleto = typeof response.data === 'string' 
-            ? response.data 
-            : (response.data?.nome || response.data?.nome_usuario || 'Usuário');
-          setPrimeiroNome(nomeCompleto.trim().split(' ')[0]);
-        }
-      } catch (err) {
-        if (isMounted) console.error('Erro ao buscar o nome:', err);
-      }
-    }
-
+  useEffect(() => {
     carregarNomeUsuario();
+  }, [usuarioId]);
 
-    return () => {
-      isMounted = false;
-    };
+  // Função disparada ao puxar o ecrã para cima (Pull-to-Refresh)
+  const onRefresh = useCallback(async () => {
+    setRefreshing(true);
+    await carregarNomeUsuario();
+    setTimeout(() => {
+      setRefreshing(false);
+    }, 800);
   }, [usuarioId]);
 
   return (
     <ThemedView style={styles.container}>
-      <SafeAreaView style={styles.safeArea}>
-        <ScrollView 
-          style={styles.scrollView}
-          contentContainerStyle={styles.scrollContent}
-          showsVerticalScrollIndicator={false}
-        >
-          {/* Header dinâmico exibindo apenas o primeiro nome */}
+      <SafeAreaView style={styles.safeArea} edges={['top', 'left', 'right']}>
+        {/* Header Fixo com espaçamento lateral uniforme */}
+        <ThemedView style={styles.headerContainer}>
           <HeaderAreaView 
             title={`Olá, ${primeiroNome}!`} 
             subtitle="Pronto para sua próxima meta?"
             buttonIcon={
-              <NotificationButton onPress={() => console.log('Notificações clicadas!')} />
+              <NotificationButton 
+                onPress={() => router.navigate('/notificacoes')} 
+              />
             }
           />
+        </ThemedView>
 
+        <ScrollView 
+          style={styles.scrollView}
+          contentContainerStyle={styles.scrollContent}
+          showsVerticalScrollIndicator={false}
+          refreshControl={
+            <RefreshControl
+              refreshing={refreshing}
+              onRefresh={onRefresh}
+              tintColor="#FF5733"
+              colors={['#FF5733']}
+            />
+          }
+        >
           <ThemedView style={styles.heroSection}>
             {/* Conteúdo hero */}
           </ThemedView>
 
           <ThemedView style={styles.cardsContainer}>
-            {/* 4. Passa o usuarioId global para todos os cartões */}
             <CardOfensiva usuarioId={usuarioId} /> 
-            {/* <CardSemanaQuantAtividades usuarioId={usuarioId} /> */}
-            {/* <CardProgressoSemanal usuarioId={usuarioId} /> */}
             <ProximaAtividadeCard usuarioId={usuarioId} />
             <CardConquistasDesbloqueadas usuarioId={usuarioId} />
             <CardDestaquesSemanas usuarioId={usuarioId} />
+          </ThemedView>
+
+          {/* Indicador visual de fim de conteúdo */}
+          <ThemedView style={styles.footerContainer}>
+            <Text style={styles.footerText}>✨ Chegaste ao fim da página</Text>
           </ThemedView>
 
           {Platform.OS === 'web' && <WebBadge />}
@@ -100,24 +117,41 @@ const styles = StyleSheet.create({
     maxWidth: MaxContentWidth,
     alignSelf: 'center',
   },
+  headerContainer: {
+    width: '100%',
+    paddingHorizontal: Spacing.four, // Alinhado perfeitamente com o scrollContent
+    backgroundColor: 'transparent',
+  },
   scrollView: {
     flex: 1,
     width: '100%',
   },
   scrollContent: {
     paddingHorizontal: Spacing.four,
-    paddingTop: Spacing.two,
+    paddingTop: Spacing.one,
     paddingBottom: BottomTabInset + Spacing.three,
     gap: Spacing.three,
   },
   heroSection: {
     alignItems: 'center',
     justifyContent: 'center',
-    paddingHorizontal: Spacing.four,
     gap: Spacing.four,
   },
   cardsContainer: {
     width: '100%',
     gap: Spacing.three,
+    backgroundColor: 'transparent',
+  },
+  footerContainer: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: Spacing.two,
+    marginTop: Spacing.one,
+    backgroundColor: 'transparent',
+  },
+  footerText: {
+    fontSize: 13,
+    color: '#888888',
+    opacity: 0.8,
   },
 });

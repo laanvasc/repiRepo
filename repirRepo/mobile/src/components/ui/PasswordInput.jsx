@@ -1,5 +1,6 @@
+import { Ionicons } from '@expo/vector-icons';
 import { useState } from 'react';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { Pressable, StyleSheet, View } from 'react-native';
 
 import InputText from '@/components/ui/InputText';
 
@@ -10,11 +11,12 @@ export function PasswordInput({
   error,
   autoComplete,
   textContentType,
+  onFocus,
 }) {
   const [visible, setVisible] = useState(false);
 
   return (
-    <View>
+    <View style={styles.container}>
       <InputText
         label={label}
         value={value}
@@ -23,6 +25,7 @@ export function PasswordInput({
         secureTextEntry={!visible}
         autoComplete={autoComplete}
         textContentType={textContentType}
+        onFocus={onFocus}
         inputStyle={styles.input}
       />
       <Pressable
@@ -30,30 +33,36 @@ export function PasswordInput({
         accessibilityLabel={visible ? 'Ocultar senha' : 'Mostrar senha'}
         onPress={() => setVisible(!visible)}
         style={styles.toggle}
+        hitSlop={10}
       >
-        <Text style={styles.toggleText}>{visible ? 'Ocultar' : 'Mostrar'}</Text>
+        <Ionicons
+          name={visible ? 'eye-off-outline' : 'eye-outline'}
+          size={20}
+          color="#6B7280"
+        />
       </Pressable>
     </View>
   );
 }
 
-// Exportação default para evitar o erro de importação anterior
 export default PasswordInput;
 
 const styles = StyleSheet.create({
+  container: {
+    width: '100%',
+    position: 'relative',
+  },
   input: {
-    paddingRight: 88,
+    paddingRight: 48, // Garante que o texto digitado não passa por baixo do ícone
   },
   toggle: {
     position: 'absolute',
-    right: 16,
-    top: 37,
-    minHeight: 28,
+    right: 14,
+    // Ajustado para alinhar verticalmente com a caixa de input (geralmente abaixo da label)
+    top: 36, 
+    height: 40,
     justifyContent: 'center',
-  },
-  toggleText: {
-    color: '#FF5E32',
-    fontSize: 12,
-    fontWeight: '600',
+    alignItems: 'center',
+    zIndex: 99,
   },
 });
