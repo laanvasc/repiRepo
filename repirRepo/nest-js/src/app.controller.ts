@@ -20,19 +20,44 @@ export class AppController {
     return this.appService.getUsuarioXp(Number(id));
   }
 
-  // Corrigido para remover o 'usuarios/' duplicado, ficando apenas ':id/atividades-frequentes'
+  // Rota para listar o catálogo de atividades disponíveis na tabela mestre
+  @Get('catalogo-atividades')
+  async getAtividadesCatalogo() {
+    return this.appService.getAtividadesCatalogo();
+  }
+
+  @Post(':id/registrar-atividade')
+  async registrarRealizacaoAtividade(
+    @Param('id') id: string,
+    @Body() body: {
+      id_atividade: number;
+      duracao_minutos: number;
+      intensidade: string;
+      observacao?: string;
+      xp_ganho?: number;
+    },
+  ) {
+    return this.appService.registrarRealizacaoAtividade(Number(id), body);
+  }
+
+@Get(':id/metas-progresso')
+  async obterMetasProgresso(@Param('id') id: string) {
+    return this.appService.calcularMetasProgresso(Number(id));
+  }
+
+  // Rota para buscar as atividades frequentes do utilizador
   @Get(':id/atividades-frequentes')
   async getAtividadesFrequentesUsuario(@Param('id') id: string) {
     return this.appService.getAtividadesFrequentesUsuario(Number(id));
   }
 
-@Post(':id/atividades-frequentes')
-async criarAtividadeFrequente(
-  @Param('id') id: string,
-  @Body() body: any,
-) {
-  return this.appService.criarAtividadeFrequente(Number(id), body);
-}
+  @Post(':id/atividades-frequentes')
+  async criarAtividadeFrequente(
+    @Param('id') id: string,
+    @Body() body: any,
+  ) {
+    return this.appService.criarAtividadeFrequente(Number(id), body);
+  }
 
   // Rota para verificar e atualizar a ofensiva do usuário
   @Get(':id/ofensiva') 
@@ -57,8 +82,7 @@ async criarAtividadeFrequente(
   }
 
   @Post()
-async criarUsuario(@Body() body: { nome: string; email: string; senha?: string }) {
-  return this.appService.criarUsuario(body.nome, body.email, body.senha);
-}
-
+  async criarUsuario(@Body() body: { nome: string; email: string; senha?: string }) {
+    return this.appService.criarUsuario(body.nome, body.email, body.senha);
+  }
 }

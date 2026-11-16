@@ -1,13 +1,11 @@
 import { router } from 'expo-router';
-import { useState } from 'react';
-import { Alert, Platform, ScrollView, StyleSheet } from 'react-native';
+import { useEffect, useState } from 'react';
+import { Alert, Platform, ScrollView, StyleSheet, Text, View, Pressable } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import HeaderAreaView from '@/components/header-area-view';
 import { ThemedView } from '@/components/themed-view';
 import Button from '@/components/ui/Button';
-import InputCheckboxModalidade from '@/components/ui/InputCheckboxModalidade';
-import InputText from '@/components/ui/InputText';
 import { WebBadge } from '@/components/web-badge';
 import HorarioSeletorInput from '../components/ui/HorarioSeletorInput';
 import SeletorDiasSemana from '../components/ui/SeletorDiaSemana';
@@ -19,12 +17,29 @@ import { api } from '@/services/api';
 export default function CadastrarAtividadeScreen() {
   const { usuarioId } = useAuth();
   
-  const [nomeAtividade, setNomeAtividade] = useState('');
-  const [modalidade, setModalidade] = useState('');
+  const [listaAtividades, setListaAtividades] = useState([]);
+  const [atividadeSelecionadaId, setAtividadeSelecionadaId] = useState(null);
   const [diasRepeticao, setDiasRepeticao] = useState(['ter', 'qua', 'sex']);
   const [horarioValue, setHorario] = useState('18:00');
   const [loading, setLoading] = useState(false);
 
+  // Busca as atividades disponíveis na tabela mestre ao carregar o ecrã
+ // Busca as atividades disponíveis na tabela mestre ao carregar o ecrã
+  useEffect(() => {
+    async function carregarCatalogo() {
+      try {
+        const response = await api.get('/usuarios/catalogo-atividades'); // Adicionado '/usuarios'
+        setListaAtividades(response.data);
+        if (response.data.length > 0) {
+          setAtividadeSelecionadaId(response.data[0].id_atividade);
+        }
+      } catch (err) {
+        console.error('Erro ao carregar catálogo de atividades:', err);
+      }
+    }
+    carregarCatalogo();
+  }, []);
+  
   const toggleDia = (id) => {
     setDiasRepeticao((prev) =>
       prev.includes(id) ? prev.filter((d) => d !== id) : [...prev, id]
@@ -32,8 +47,8 @@ export default function CadastrarAtividadeScreen() {
   };
 
   const handleCriarAtividade = async () => {
-    if (!nomeAtividade.trim()) {
-      Alert.alert('Atenção', 'Por favor, insere o nome da atividade.');
+    if (!atividadeSelecionadaId) {
+      Alert.alert('Atenção', 'Por favor, selecione uma atividade.');
       return;
     }
 
@@ -45,7 +60,6 @@ export default function CadastrarAtividadeScreen() {
     try {
       setLoading(true);
 
-      // Converte o array de dias selecionados nos nomes exatos que o teu backend/base de dados espera (repete_seg, repete_ter, etc.)
       const diasObj = {
         repete_seg: diasRepeticao.includes('seg'),
         repete_ter: diasRepeticao.includes('ter'),
@@ -56,22 +70,20 @@ export default function CadastrarAtividadeScreen() {
         repete_dom: diasRepeticao.includes('dom'),
       };
       
-      // Envia os dados para a API do NestJS
+      // Envia o id_atividade selecionado e os dias/horário para a API
       await api.post(`/usuarios/${usuarioId}/atividades-frequentes`, {
-        nome_atividade: nomeAtividade,
-        categoria: modalidade || 'Geral',
-        ...diasObj, // Envia repete_seg, repete_ter, etc. como booleanos (true/false)
+        id_atividade: Number(atividadeSelecionadaId),
+        ...diasObj,
         horario: horarioValue,
       });
 
-      
+      router.push('/(auth)/sucesso');
 
     } catch (err) {
       console.error('Erro ao criar atividade:', err.response?.data || err.message);
       
       const mensagemServidor = err.response?.data?.message || 'Não foi possível cadastrar a atividade.';
 
-      // Redireciona para o ecrã de erro customizado com parâmetros
       router.push({
         pathname: '/(auth)/erro',
         params: {
@@ -87,7 +99,6 @@ export default function CadastrarAtividadeScreen() {
   return (
     <ThemedView style={styles.container}>
       <SafeAreaView style={styles.safeArea} edges={['top', 'left', 'right']}>
-        {/* Header Fixo com espaçamento lateral uniforme */}
         <ThemedView style={styles.headerContainer}>
           <HeaderAreaView title="Cadastrar Atividade" />
         </ThemedView>
@@ -98,21 +109,25 @@ export default function CadastrarAtividadeScreen() {
           style={styles.scroll}
         >
           <ThemedView style={styles.formContainer}>
-            {/* Campo de Nome da Atividade */}
-            <InputText
-              label="Nome da atividade"
-              placeholder="Ex: Corrida matinal"
-              autoCapitalize="words"
-              autoCorrect={true}
-              value={nomeAtividade}
-              onChangeText={setNomeAtividade}
-            />
-
-            {/* Select de Modalidade */}
-            <InputCheckboxModalidade
-              valorSelecionado={modalidade}
-              onSelectOption={(value) => setModalidade(value)}
-            />
+            
+            {/* Seletor de Atividades da Tabela Mestre */}
+            <Text style={styles.label}>Selecione a Atividade</Text>
+            <View style={styles.catalogoContainer}>
+              {listaAtividades.map((item) => {
+                const isSelected = atividadeSelecionadaId === item.id_atividade;
+                return (
+                  <Pressable
+                    key={String(item.id_atividade)}
+                    style={[styles.itemCatalogo, isSelected && styles.itemCatalogoSelecionado]}
+                    onPress={() => setAtividadeSelecionadaId(item.id_atividade)}
+                  >
+                    <Text style={[styles.textoCatalogo, isSelected && styles.textoCatalogoSelecionado]}>
+                      {item.nome_atividade}
+                    </Text>
+                  </Pressable>
+                );
+              })}
+            </View>
 
             <SeletorDiasSemana
               diasSelecionados={diasRepeticao}
@@ -125,7 +140,7 @@ export default function CadastrarAtividadeScreen() {
             />
 
             <Button 
-              titulo={loading ? "A criar..." : "Criar Atividade"} 
+              titulo={loading ? "A associar..." : "Salvar Atividade"} 
               onPress={handleCriarAtividade}
               disabled={loading}
             />
@@ -167,5 +182,34 @@ const styles = StyleSheet.create({
     gap: Spacing.three,
     backgroundColor: 'transparent',
     width: '100%',
+  },
+  label: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#22202A',
+    marginBottom: -4,
+  },
+  catalogoContainer: {
+    gap: 8,
+  },
+  itemCatalogo: {
+    padding: 14,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+    backgroundColor: '#FFFFFF',
+  },
+  itemCatalogoSelecionado: {
+    borderColor: '#FF5E32',
+    backgroundColor: '#FFF0EC',
+  },
+  textoCatalogo: {
+    fontSize: 15,
+    color: '#475569',
+    fontWeight: '500',
+  },
+  textoCatalogoSelecionado: {
+    color: '#FF5E32',
+    fontWeight: '700',
   },
 });

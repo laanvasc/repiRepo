@@ -24,6 +24,7 @@ export default function HomeScreen() {
   console.log('🏠 HomeScreen renderizada com o usuarioId:', usuarioId);
 
   const [primeiroNome, setPrimeiroNome] = useState('Usuário');
+  const [listaAtividadesFrequentes, setListaAtividadesFrequentes] = useState([]);
   const [refreshing, setRefreshing] = useState(false);
 
   // Função para buscar o nome do utilizador
@@ -41,15 +42,31 @@ export default function HomeScreen() {
     }
   };
 
-  // Busca o nome do usuário logado ao carregar a Home
+  // Função para buscar as atividades frequentes do utilizador
+  const carregarAtividades = async () => {
+    if (!usuarioId) return;
+
+    try {
+      const response = await api.get(`/usuarios/${usuarioId}/atividades-frequentes`);
+      setListaAtividadesFrequentes(response.data || []);
+    } catch (err) {
+      console.error('Erro ao buscar atividades frequentes:', err);
+    }
+  };
+
+  // Carrega os dados ao iniciar ou mudar o ID do utilizador
   useEffect(() => {
     carregarNomeUsuario();
+    carregarAtividades();
   }, [usuarioId]);
 
   // Função disparada ao puxar o ecrã para cima (Pull-to-Refresh)
   const onRefresh = useCallback(async () => {
     setRefreshing(true);
-    await carregarNomeUsuario();
+    await Promise.all([
+      carregarNomeUsuario(),
+      carregarAtividades()
+    ]);
     setTimeout(() => {
       setRefreshing(false);
     }, 800);
@@ -90,7 +107,7 @@ export default function HomeScreen() {
 
           <ThemedView style={styles.cardsContainer}>
             <CardOfensiva usuarioId={usuarioId} /> 
-            <ProximaAtividadeCard usuarioId={usuarioId} />
+            <ProximaAtividadeCard atividades={listaAtividadesFrequentes} />
             <CardConquistasDesbloqueadas usuarioId={usuarioId} />
             <CardDestaquesSemanas usuarioId={usuarioId} />
           </ThemedView>
@@ -119,7 +136,7 @@ const styles = StyleSheet.create({
   },
   headerContainer: {
     width: '100%',
-    paddingHorizontal: Spacing.four, // Alinhado perfeitamente com o scrollContent
+    paddingHorizontal: Spacing.four,
     backgroundColor: 'transparent',
   },
   scrollView: {

@@ -7,8 +7,40 @@ import { Image } from 'expo-image';
 import { StyleSheet, Text, View } from 'react-native';
 import Svg, { Path } from 'react-native-svg';
 
-export default function ProximaAtividadeCard() {
+// Função auxiliar para calcular qual é a atividade mais próxima com base na hora atual
+function encontrarProximaAtividade(atividades) {
+  if (!atividades || atividades.length === 0) return null;
+
+  const agora = new Date();
+  const minutosAtuais = agora.getHours() * 60 + agora.getMinutes();
+
+  // Mapeia todas as atividades e converte o horário para minutos do dia
+  const atividadesComMinutos = atividades.map((item) => {
+    const horarioStr = item.horario || '00:00';
+    const [horas, minutos] = horarioStr.split(':').map(Number);
+    const totalMinutos = (horas || 0) * 60 + (minutos || 0);
+    return { ...item, totalMinutos };
+  });
+
+  // Filtra apenas as atividades que ainda vão acontecer hoje (horário > hora atual)
+  const futuras = atividadesComMinutos.filter((item) => item.totalMinutos >= minutosAtuais);
+
+  if (futuras.length > 0) {
+    // Ordena da mais próxima para a mais distante e pega a primeira
+    futuras.sort((a, b) => a.totalMinutos - b.totalMinutos);
+    return futuras[0];
+  }
+
+  // Se já passaram todas as atividades de hoje, opcionalmente retorna a primeira de amanhã (ou a primeira do dia)
+  atividadesComMinutos.sort((a, b) => a.totalMinutos - b.totalMinutos);
+  return atividadesComMinutos[0];
+}
+
+export default function ProximaAtividadeCard({ atividades = [] }) {
   const [fontsLoaded] = useFonts({ Inter_600SemiBold, Inter_700Bold });
+
+  // Calcula dinamicamente a próxima atividade com base no relógio
+  const proxima = encontrarProximaAtividade(atividades);
 
   if (!fontsLoaded) return null;
 
@@ -32,11 +64,13 @@ export default function ProximaAtividadeCard() {
             </Svg>
           </View>
 
-          <Text style={styles.activity} numberOfLines={1}>Treino quadriceps</Text>
+          <Text style={styles.activity} numberOfLines={1}>
+            {proxima ? proxima.nome_atividade || proxima.titulo : 'Nenhuma atividade pendente'}
+          </Text>
         </View>
       </View>
 
-      {/* MASCOTE À DIREITA (Posicionado de forma segura sem estourar o layout) */}
+      {/* MASCOTE À DIREITA */}
       <Image
         source={require('../assets/mascote/pose2-mascot2.svg')}
         style={styles.mascot}
@@ -49,8 +83,8 @@ export default function ProximaAtividadeCard() {
 const styles = StyleSheet.create({
   card: {
     width: '100%',
-    height: 126, // Altura fixa controlada para o cartão não achatar
-    backgroundColor: '#FFB4ED', // Cor original do fundo do card
+    height: 126,
+    backgroundColor: '#FFB4ED',
     borderRadius: 16,
     padding: 16,
     overflow: 'hidden',
@@ -58,13 +92,11 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'center',
   },
-
   content: {
     flex: 1,
     justifyContent: 'center',
-    zIndex: 1, // Garante que o texto fica por cima se necessário
+    zIndex: 1,
   },
-
   title: {
     fontFamily: 'Inter_600SemiBold',
     fontSize: 13,
@@ -72,12 +104,10 @@ const styles = StyleSheet.create({
     color: '#000000',
     marginBottom: 8,
   },
-
   activityRow: {
     flexDirection: 'row',
     alignItems: 'center',
   },
-
   iconCircle: {
     width: 38,
     height: 38,
@@ -87,15 +117,13 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     marginRight: 10,
   },
-
   activity: {
     fontFamily: 'Inter_700Bold',
     fontSize: 15,
     lineHeight: 18,
     color: '#000000',
-    flexShrink: 1, // Evita que texto grande empurre o layout para fora
+    flexShrink: 1,
   },
-
   mascot: {
     width: 95,
     height: 95,

@@ -17,6 +17,99 @@ import { BottomTabInset, MaxContentWidth, Spacing } from '@/constants/theme';
 import { useAuth } from '@/context/AuthContext';
 import { api } from '@/services/api';
 
+// Função auxiliar para definir cores e metadados baseados na categoria_atividade ou no nome da atividade
+const getCategoryStyle = (item, index = 0) => {
+  const catId = item?.categoria_atividade ?? item?.categoria;
+  const numId = Number(catId);
+  const nomeAtividade = (item?.nome_atividade || '').toLowerCase();
+  const catTexto = String(catId || '').toLowerCase();
+
+  // 1. Cardio (Coral / Vermelho vibrante)
+  if (
+    numId === 1 ||
+    catTexto.includes('cardio') ||
+    nomeAtividade.includes('corrida') ||
+    nomeAtividade.includes('caminhada') ||
+    nomeAtividade.includes('bike') ||
+    nomeAtividade.includes('ciclismo') ||
+    nomeAtividade.includes('esteira')
+  ) {
+    return {
+      bg: '#FF5252',
+      border: '#E03E3E',
+      text: '#FFFFFF',
+      categoria: 'Cardio',
+    };
+  }
+
+  // 2. Força (Verde vibrante)
+  if (
+    numId === 2 ||
+    catTexto.includes('força') ||
+    catTexto.includes('forca') ||
+    nomeAtividade.includes('musculação') ||
+    nomeAtividade.includes('musculacao') ||
+    nomeAtividade.includes('treino') ||
+    nomeAtividade.includes('peso') ||
+    nomeAtividade.includes('quadriceps') ||
+    nomeAtividade.includes('supino') ||
+    nomeAtividade.includes('perna')
+  ) {
+    return {
+      bg: '#22C55E',
+      border: '#16A34A',
+      text: '#FFFFFF',
+      categoria: 'Força',
+    };
+  }
+
+  // 3. Flexibilidade (Azul vibrante)
+  if (
+    numId === 3 ||
+    catTexto.includes('flex') ||
+    nomeAtividade.includes('yoga') ||
+    nomeAtividade.includes('alongamento') ||
+    nomeAtividade.includes('pilates')
+  ) {
+    return {
+      bg: '#3B82F6',
+      border: '#2563EB',
+      text: '#FFFFFF',
+      categoria: 'Flexibilidade',
+    };
+  }
+
+  // 4. Recuperação (Roxo / Púrpura vibrante)
+  if (
+    numId === 4 ||
+    catTexto.includes('recupera') ||
+    nomeAtividade.includes('descanso') ||
+    nomeAtividade.includes('massagem') ||
+    nomeAtividade.includes('sauna')
+  ) {
+    return {
+      bg: '#A855F7',
+      border: '#9333EA',
+      text: '#FFFFFF',
+      categoria: 'Recuperação',
+    };
+  }
+
+  // Fallback dinâmico alternando entre as cores das 4 categorias para visual diferenciado
+  const paletaFallback = [
+    { bg: '#FF5252', border: '#E03E3E', text: '#FFFFFF', categoria: 'Cardio' },
+    { bg: '#22C55E', border: '#16A34A', text: '#FFFFFF', categoria: 'Força' },
+    { bg: '#3B82F6', border: '#2563EB', text: '#FFFFFF', categoria: 'Flexibilidade' },
+    { bg: '#A855F7', border: '#9333EA', text: '#FFFFFF', categoria: 'Recuperação' },
+  ];
+
+  const chosenIndex = typeof index === 'number' && !isNaN(index)
+    ? Math.abs(index) % paletaFallback.length
+    : (Math.abs(Number(item?.id_atividade_frequente || item?.id_atividade || 0)) % paletaFallback.length);
+
+  return paletaFallback[chosenIndex];
+};
+
 export default function AtividadesScreen() {
   const { usuarioId } = useAuth();
   const [atividades, setAtividades] = useState([]);
@@ -44,7 +137,6 @@ export default function AtividadesScreen() {
     carregarAtividadesFrequentes();
   }, [usuarioId]);
 
-  // Função disparada ao puxar o ecrã para cima (Pull-to-Refresh)
   const onRefresh = useCallback(async () => {
     setRefreshing(true);
     await carregarAtividadesFrequentes();
@@ -67,7 +159,6 @@ export default function AtividadesScreen() {
 
   return (
     <ThemedView style={styles.container}>
-      {/* Imagem de Fundo cobrindo absolutamente todo o ecrã */}
       <Image
         source={require('@/components/assets/fundos/fundo-onda1-rosa.png')}
         style={[StyleSheet.absoluteFillObject, styles.backgroundImage]}
@@ -75,7 +166,6 @@ export default function AtividadesScreen() {
       />
 
       <SafeAreaView style={styles.safeArea} edges={['top', 'left', 'right']}>
-        {/* Header Fixo com o título e notificações corretas */}
         <ThemedView style={styles.headerContainer}>
           <HeaderAreaView
             title="Suas atividades"
@@ -108,21 +198,44 @@ export default function AtividadesScreen() {
           ) : (
             <ThemedView style={styles.cardsContainer}>
               {atividades.length > 0 ? (
-                atividades.map((item) => (
-                  <AtividadeFrequenteCard
-                    key={item.id_atividade_frequente}
-                    titulo={item.nome_atividade}
-                    categoria={item.categoria}
-                    onPress={() => console.log('Atividade clicada:', item.id_atividade_frequente)}
-                  />
-                ))
+                atividades.map((item, index) => {
+                  const catStyle = getCategoryStyle(item, index);
+
+                  return (
+                    <AtividadeFrequenteCard
+  key={item.id_atividade_frequente}
+  titulo={item.nome_atividade}
+  horario={item.horario}
+  categoria={catStyle.categoria} // <--- Alterado de item.categoria_atividade para catStyle.categoria
+  concluida={item.realizada_hoje}
+  cardStyle={{ 
+    backgroundColor: catStyle.bg, 
+    borderColor: catStyle.border 
+  }}
+  textColor={catStyle.text}
+  onPress={() => {
+    if (item.realizada_hoje) {
+      return;
+    }
+
+    router.push({
+      pathname: '/registrarAtividade',
+      params: {
+        id_atividade: item.id_atividade,
+        nome_atividade: item.nome_atividade,
+        horario: item.horario || 'Horário flexível',
+      },
+    });
+  }}
+/>
+                  );
+                })
               ) : (
                 <Text style={styles.emptyText}>Nenhuma atividade frequente encontrada.</Text>
               )}
             </ThemedView>
           )}
 
-          {/* Botão corrigido com o caminho absoluto correto da aba */}
           <TouchableOpacity 
             style={styles.addBottomButton}
             onPress={() => router.push('/cadastrarAtividade')}
@@ -136,7 +249,6 @@ export default function AtividadesScreen() {
             <Button titulo="Finalizar atividades diárias" onPress={handleFinalizarAtividades} />
           </ThemedView>
 
-          {/* Indicador visual de fim de conteúdo */}
           <ThemedView style={styles.footerContainer}>
             <ThemedText style={styles.footerText}>✨ Chegaste ao fim das atividades</ThemedText>
           </ThemedView>

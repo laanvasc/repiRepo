@@ -1,6 +1,6 @@
 import { router } from 'expo-router';
-import { useCallback, useState } from 'react';
-import { Platform, RefreshControl, ScrollView, StyleSheet } from 'react-native';
+import { useCallback, useEffect, useState } from 'react';
+import { ActivityIndicator, Platform, RefreshControl, ScrollView, StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import HeaderAreaView from '@/components/header-area-view';
@@ -12,31 +12,56 @@ import { NotificationButton } from '@/components/ui/NotificationButton';
 import { WebBadge } from '@/components/web-badge';
 
 import { BottomTabInset, MaxContentWidth, Spacing } from '@/constants/theme';
+import { useAuth } from '@/context/AuthContext';
+import { api } from '@/services/api';
 
 export default function MetaScreen() {
+  const { usuarioId } = useAuth();
+  const [metas, setMetas] = useState(null);
+  const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+
+  const carregarMetas = async () => {
+    if (!usuarioId) {
+      setLoading(false);
+      return;
+    }
+
+    try {
+      const response = await api.get(`/usuarios/${usuarioId}/metas-progresso`);
+      setMetas(response.data);
+    } catch (err) {
+      console.error('Erro ao carregar metas e progresso:', err.response?.data || err.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    setLoading(true);
+    carregarMetas();
+  }, [usuarioId]);
 
   const handleOpenNotificacoes = () => {
     router.navigate('/notificacoes');
   };
 
-  // Função simulada ou real para atualizar dados ao puxar o ecrã
   const onRefresh = useCallback(async () => {
     setRefreshing(true);
-    // Aqui podes chamar a API de metas se houver no futuro (ex: await carregarMetas())
+    await carregarMetas();
     setTimeout(() => {
       setRefreshing(false);
     }, 800);
-  }, []);
+  }, [usuarioId]);
 
   return (
     <ThemedView style={styles.container}>
       <SafeAreaView style={styles.safeArea} edges={['top', 'left', 'right']}>
-        {/* Header Fixo com espaçamento lateral uniforme */}
+        {/* Header Fixo */}
         <ThemedView style={styles.headerContainer}>
           <HeaderAreaView
             title="Metas"
-            subtitle="Acompanhe o seu progresso diário"
+            subtitle="Acompanhe o seu progresso diário e semanal"
             buttonIcon={
               <NotificationButton onPress={handleOpenNotificacoes} />
             }
@@ -56,21 +81,47 @@ export default function MetaScreen() {
             />
           }
         >
-          <ThemedView style={styles.titleContainer}>
-            {/* Card de Progresso Semanal */}
-            <CardMetasCompletas />
-
-            <ThemedText style={styles.centerText} themeColor="textSecondary">
-              Metas da semana
-            </ThemedText>
-
-            <ThemedView style={styles.cardsContainer}>
-              <MetaCard
-                tituloMeta="Fazer 3 atividades"
-                onPress={() => console.log('testando')}
+          {loading ? (
+            <View style={styles.loaderContainer}>
+              <ActivityIndicator size="large" color="#FF5733" />
+            </View>
+          ) : (
+            <ThemedView style={styles.titleContainer}>
+              {/* Card de Progresso Semanal Geral (Carregado dinamicamente do backend) */}
+              <CardMetasCompletas 
+                realizadas={metas?.progresso_semanal?.realizadas || 0} 
+                meta={metas?.progresso_semanal?.meta || 15} 
               />
+
+              {/* Seção: Metas do Dia */}
+              <ThemedText style={styles.sectionTitle} themeColor="textSecondary">
+                Metas do dia
+              </ThemedText>
+
+              <ThemedView style={styles.cardsContainer}>
+                <MetaCard
+                  tituloMeta={`Concluir ${metas?.progresso_diario?.meta || 3} atividades hoje`}
+                  progresso={`${metas?.progresso_diario?.realizadas || 0}/${metas?.progresso_diario?.meta || 3}`}
+                  concluido={metas?.progresso_diario?.concluido || false}
+                  onPress={() => console.log('Meta diária clicada')}
+                />
+              </ThemedView>
+
+              {/* Seção: Metas da Semana */}
+              <ThemedText style={styles.sectionTitle} themeColor="textSecondary">
+                Metas da semana
+              </ThemedText>
+
+              <ThemedView style={styles.cardsContainer}>
+                <MetaCard
+                  tituloMeta={`Completar ${metas?.progresso_semanal?.meta || 15} atividades esta semana`}
+                  progresso={`${metas?.progresso_semanal?.realizadas || 0}/${metas?.progresso_semanal?.meta || 15}`}
+                  concluido={metas?.progresso_semanal?.concluido || false}
+                  onPress={() => console.log('Meta semanal clicada')}
+                />
+              </ThemedView>
             </ThemedView>
-          </ThemedView>
+          )}
 
           {/* Indicador visual de fim de conteúdo */}
           <ThemedView style={styles.footerContainer}>
@@ -98,7 +149,7 @@ const styles = StyleSheet.create({
   },
   headerContainer: {
     width: '100%',
-    paddingHorizontal: Spacing.four, // Alinhado perfeitamente com o scrollContent
+    paddingHorizontal: Spacing.four,
     backgroundColor: 'transparent',
   },
   scroll: {
@@ -114,13 +165,19 @@ const styles = StyleSheet.create({
     gap: Spacing.two,
     backgroundColor: 'transparent',
   },
-  centerText: {
-    marginVertical: Spacing.one,
+  sectionTitle: {
+    marginTop: Spacing.one,
     fontWeight: '700',
+    fontSize: 16,
   },
   cardsContainer: {
     gap: Spacing.two,
     backgroundColor: 'transparent',
+  },
+  loaderContainer: {
+    paddingVertical: Spacing.five,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   footerContainer: {
     alignItems: 'center',
