@@ -6,6 +6,8 @@ export default function AuthLayout() {
       <Stack.Screen name="login" />
       <Stack.Screen name="cadastro" />
       <Stack.Screen name="esqueci-senha" />
+      <Stack.Screen name="sucesso" />
+      <Stack.Screen name="erro" />
     </Stack>
   );
 }

@@ -1,26 +1,21 @@
 import { StyleSheet, Text, View } from 'react-native';
 
-const DIAS_DEFAULT = [
-  { dia: 'S', progresso: 0.6, atual: false },
-  { dia: 'T', progresso: 0.85, atual: false },
-  { dia: 'Q', progresso: 0.4, atual: false },
-  { dia: 'Q', progresso: 1.0, atual: true },
-  { dia: 'S', progresso: 0.0, atual: false },
-  { dia: 'S', progresso: 0.0, atual: false },
-  { dia: 'D', progresso: 0.0, atual: false },
-];
-
 export function CardProgressoSemanal({
   titulo = 'Progresso Semanal',
-  dias = DIAS_DEFAULT,
+  dias = [],
 }) {
+  const listaDias = Array.isArray(dias) ? dias : [];
+
   return (
     <View style={styles.card}>
       <Text style={styles.title}>{titulo}</Text>
 
       <View style={styles.diasContainer}>
-        {dias.map((item, index) => {
-          const percentual = Math.min(Math.max(item.progresso, 0), 1) * 100;
+        {listaDias.map((item, index) => {
+          const meta = item.metaDiaria > 0 ? item.metaDiaria : 3;
+          const realizadas = Math.max(item.atividadesFeitas || 0, 0);
+          
+          const percentual = Math.min(Math.max(realizadas / meta, 0), 1) * 100;
 
           return (
             <View key={index} style={styles.pillBackground}>
@@ -55,6 +50,7 @@ const styles = StyleSheet.create({
     paddingVertical: 18,
     paddingHorizontal: 16,
     alignSelf: 'flex-start',
+    backgroundColor: 'transparent',
   },
   title: {
     fontSize: 18,
@@ -72,7 +68,7 @@ const styles = StyleSheet.create({
   pillBackground: {
     flex: 1,
     height: 80,
-    backgroundColor: '#FCD8CD', // Fundo claro da pílula
+    backgroundColor: '#FCD8CD',
     borderRadius: 28,
     overflow: 'hidden',
     alignItems: 'center',
@@ -84,7 +80,7 @@ const styles = StyleSheet.create({
     bottom: 0,
     left: 0,
     right: 0,
-    backgroundColor: '#FF5E32', // Preenchimento laranja vibrante
+    backgroundColor: '#FF5E32',
     borderRadius: 28,
   },
   diaText: {

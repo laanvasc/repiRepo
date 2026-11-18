@@ -8,10 +8,10 @@ import Button from '@/components/ui/Button';
 import InputText from '@/components/ui/InputText';
 import { PasswordInput } from '@/components/ui/PasswordInput';
 import { api } from '@/services/api';
-import { useAuth } from '@/context/AuthContext'; // <-- 1. Importa o hook de autenticação
+import { useAuth } from '@/context/AuthContext';
 
 export default function LoginScreen() {
-    const { entrar } = useAuth(); // <-- 2. Extrai a função entrar do contexto
+    const { entrar } = useAuth();
 
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
@@ -30,25 +30,20 @@ export default function LoginScreen() {
             try {
                 setLoading(true);
 
-                // Faz a requisição para o backend NestJS
                 const response = await api.post('/usuarios/login', {
                     email: normalizedEmail,
                     senha: password,
                 });
 
-                console.log('Login bem-sucedido:', response.data);
-
-                // Extrai o ID do utilizador retornado pela API
                 const usuarioId = response.data.usuario?.id;
 
                 if (!usuarioId) {
                     throw new Error('ID do usuário não retornado pela API.');
                 }
 
-                // 3. ATUALIZA O ESTADO GLOBAL E GUARDA NO ASYNSTORAGE ANTES DE REDIRECIONAR!
                 await entrar(usuarioId);
 
-                // Redireciona para a home do app (o contexto já tem o ID guardado)
+                // Redireciona imediatamente para a home (o overlay da home cuidará da transição visual)
                 router.replace('/home');
 
             } catch (err) {
@@ -69,7 +64,7 @@ export default function LoginScreen() {
             >
                 <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
                     <Image
-                        source={require('@/components/assets/mascote/pose2-mascot2.svg')}
+                        source={require('@/components/assets/mascote/pose1-mascot1.svg')}
                         contentFit="contain"
                         style={styles.mascot}
                     />
@@ -95,9 +90,6 @@ export default function LoginScreen() {
                             textContentType="password"
                             labelStyle={styles.label}
                         />
-                        <Pressable onPress={() => router.push('/esqueci-senha')} style={styles.forgotLink}>
-                            <Text style={styles.linkText}>Esqueci minha senha</Text>
-                        </Pressable>
 
                         {loading ? (
                             <View style={styles.loaderContainer}>
@@ -109,6 +101,10 @@ export default function LoginScreen() {
 
                         <Pressable onPress={() => router.push('/cadastro')} style={styles.createLink}>
                             <Text style={styles.linkText}>Criar conta</Text>
+                        </Pressable>
+
+                        <Pressable onPress={() => router.push('/esqueci-senha')} style={styles.createLink}>
+                            <Text style={styles.linkText}>Esqueci minha senha</Text>
                         </Pressable>
                     </View>
                 </ScrollView>
@@ -133,8 +129,8 @@ const styles = StyleSheet.create({
         paddingVertical: 24,
     },
     mascot: {
-        width: 80,
-        height: 80,
+        width: 160,
+        height: 160,
         marginBottom: 12,
     },
     title: {
@@ -153,12 +149,6 @@ const styles = StyleSheet.create({
         fontWeight: '500',
         marginBottom: 4,
         color: '#22202A',
-    },
-    forgotLink: {
-        alignSelf: 'flex-end',
-        marginTop: -8,
-        marginBottom: 18,
-        paddingVertical: 4,
     },
     createLink: {
         alignSelf: 'center',

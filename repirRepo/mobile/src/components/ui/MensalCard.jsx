@@ -43,7 +43,7 @@ export function MensalCard({ usuarioId }) {
             [4, 5, 6, 7, 8, 9, 10],
             [11, 12, 13, 14, 15, 16, 17],
             [18, 19, 20, 21, 22, 23, 24],
-            [25, 26, 27, 28, 29, 30, 31],
+            [25, 26, 27, 28, 29, 30],
           ],
         });
       } catch (err) {
@@ -75,7 +75,7 @@ export function MensalCard({ usuarioId }) {
   return (
     <View style={styles.card}>
       {/* TÍTULO */}
-      <Text style={styles.title}>Outubro 2026</Text>
+      <Text style={styles.title}>Novembro 2026</Text>
 
       {/* COMPARTILHAR */}
       <View style={styles.share}>

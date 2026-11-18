@@ -1,10 +1,10 @@
 import { DarkTheme, DefaultTheme, Stack, ThemeProvider } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
-import { useEffect } from 'react';
-import { Platform, StyleSheet, useColorScheme, View } from 'react-native';
+import { useEffect, useState } from 'react';
+import { ActivityIndicator, Platform, StyleSheet, useColorScheme, View } from 'react-native';
 
 import { AnimatedSplashOverlay } from '@/components/animated-icon';
-import { AuthProvider } from '../context/AuthContext'; // <-- Importa o AuthProvider
+import { AuthProvider, useAuth } from '../context/AuthContext';
 
 SplashScreen.preventAutoHideAsync();
 
@@ -25,26 +25,56 @@ const CustomDarkTheme = {
   },
 };
 
-export default function RootLayout() {
+// Componente interno para gerir o estado de autenticação e esconder o splash
+function RootNav() {
+  const { isLoading } = useAuth();
+  const [loadingForced, setLoadingForced] = useState(true);
   const colorScheme = useColorScheme();
   const theme = colorScheme === 'dark' ? CustomDarkTheme : CustomLightTheme;
 
+  // 1. Hook para forçar os 6 segundos de carregamento inicial
   useEffect(() => {
-    SplashScreen.hideAsync();
+    const timer = setTimeout(() => {
+      setLoadingForced(false);
+    }, 6000);
+
+    return () => clearTimeout(timer);
   }, []);
 
-  return (
-    <AuthProvider> {/* <-- Envolve toda a aplicação para gerir o ID globalmente */}
-      <ThemeProvider value={theme}>
-        <View style={styles.container}>
-          <Stack initialRouteName="(auth)" screenOptions={{ headerShown: false }}>
-            <Stack.Screen name="(auth)" />
-            <Stack.Screen name="(tabs)" />
-          </Stack>
+  // 2. Hook para esconder a splash screen nativa quando tudo estiver pronto
+  useEffect(() => {
+    if (!isLoading && !loadingForced) {
+      SplashScreen.hideAsync();
+    }
+  }, [isLoading, loadingForced]);
 
-          <AnimatedSplashOverlay />
-        </View>
-      </ThemeProvider>
+  // ATENÇÃO: O retorno condicional fica SEMPRE após todos os hooks acima
+  if (isLoading || loadingForced) {
+    return (
+      <View style={styles.loadingContainer}>
+        <ActivityIndicator size="large" color="#FF5733" />
+      </View>
+    );
+  }
+
+  return (
+    <ThemeProvider value={theme}>
+      <View style={styles.container}>
+        <Stack initialRouteName="(auth)" screenOptions={{ headerShown: false }}>
+          <Stack.Screen name="(auth)" />
+          <Stack.Screen name="(tabs)" />
+        </Stack>
+
+        <AnimatedSplashOverlay />
+      </View>
+    </ThemeProvider>
+  );
+}
+
+export default function RootLayout() {
+  return (
+    <AuthProvider>
+      <RootNav />
     </AuthProvider>
   );
 }
@@ -57,5 +87,11 @@ const styles = StyleSheet.create({
         webkitTapHighlightColor: 'transparent',
       } as any,
     }),
+  },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: '#FFFFFF',
   },
 });

@@ -1,7 +1,7 @@
 import { Image } from 'expo-image';
 import { router } from 'expo-router';
-import { useState } from 'react';
-import { KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, Text, View, Alert, ActivityIndicator } from 'react-native';
+import { useState, useRef } from 'react';
+import { KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, Text, View, ActivityIndicator } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import Button from '@/components/ui/Button';
@@ -16,6 +16,8 @@ export default function CadastroScreen() {
     const [confirmation, setConfirmation] = useState('');
     const [errors, setErrors] = useState({ name: '', email: '', password: '', confirmation: '' });
     const [loading, setLoading] = useState(false);
+
+    const scrollViewRef = useRef(null);
 
     async function handleRegister() {
         const normalizedName = name.trim();
@@ -34,7 +36,6 @@ export default function CadastroScreen() {
             try {
                 setLoading(true);
 
-                // Envia os dados para a API do NestJS guardar no Supabase
                 const response = await api.post('/usuarios', {
                     nome: normalizedName,
                     email: normalizedEmail,
@@ -42,17 +43,35 @@ export default function CadastroScreen() {
                 });
 
                 console.log('Utilizador registado com sucesso:', response.data);
-
-                Alert.alert(
-                    'Sucesso', 
-                    'Conta criada com sucesso! Podes fazer o login agora.',
-                    [{ text: 'OK', onPress: () => router.replace('/login') }]
-                );
+                router.replace('/(auth)/sucesso');
 
             } catch (err) {
                 console.error('Erro no cadastro:', err.response?.data || err.message);
-                const mensagemErro = err.response?.data?.message || 'Não foi possível efetuar o registo. Tenta novamente.';
-                Alert.alert('Erro no Cadastro', mensagemErro);
+
+                const status = err.response?.status;
+                const mensagemServidor = err.response?.data?.message;
+
+                const ehEmailDuplicado = 
+                    (typeof mensagemServidor === 'string' && mensagemServidor.toLowerCase().includes('registado')) ||
+                    (Array.isArray(mensagemServidor) && mensagemServidor.some(m => m.toLowerCase().includes('registado')));
+
+                if (status === 400 || status === 409 || ehEmailDuplicado) {
+                    router.push({
+                        pathname: '/(auth)/erro',
+                        params: {
+                            titulo: 'E-mail já cadastrado',
+                            mensagem: typeof mensagemServidor === 'string' ? mensagemServidor : 'Este e-mail já está registado na nossa plataforma.',
+                        },
+                    });
+                } else {
+                    router.push({
+                        pathname: '/(auth)/erro',
+                        params: {
+                            titulo: 'Problema interno',
+                            mensagem: 'Tivemos um problema interno no servidor. Por favor, tenta novamente mais tarde.',
+                        },
+                    });
+                }
             } finally {
                 setLoading(false);
             }
@@ -60,12 +79,18 @@ export default function CadastroScreen() {
     }
 
     return (
-        <SafeAreaView style={styles.safeArea}>
+        <SafeAreaView style={styles.safeArea} edges={['top', 'left', 'right']}>
             <KeyboardAvoidingView
                 style={styles.flex}
-                behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+                behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+                keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 20}
             >
-                <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
+                <ScrollView 
+                    ref={scrollViewRef}
+                    contentContainerStyle={styles.content} 
+                    keyboardShouldPersistTaps="handled"
+                    showsVerticalScrollIndicator={false}
+                >
                     <Image
                         source={require('@/components/assets/mascote/pose2-mascot2.svg')}
                         contentFit="contain"
@@ -106,6 +131,12 @@ export default function CadastroScreen() {
                             error={errors.confirmation || null}
                             autoComplete="new-password"
                             textContentType="newPassword"
+                            onFocus={() => {
+                                // Garante um scroll leve para baixo ao focar no último campo
+                                setTimeout(() => {
+                                    scrollViewRef.current?.scrollToEnd({ animated: true });
+                                }, 100);
+                            }}
                         />
 
                         {loading ? (
@@ -137,13 +168,15 @@ const styles = StyleSheet.create({
     content: {
         flexGrow: 1,
         alignItems: 'center',
-        justifyContent: 'center',
+        // Removido o justifyContent: 'center' para evitar que os inputs fiquem presos no centro
+        justifyContent: 'flex-start', 
         paddingHorizontal: 28,
-        paddingVertical: 20,
+        paddingTop: 40,
+        paddingBottom: 60, // Espaço extra no fundo para o teclado empurrar sem cortar
     },
     mascot: {
-        width: 64,
-        height: 64,
+        width: 120,
+        height: 120,
         marginBottom: 8,
     },
     title: {
@@ -159,8 +192,8 @@ const styles = StyleSheet.create({
     },
     loginLink: {
         alignSelf: 'center',
-        marginTop: 10,
-        paddingVertical: 4,
+        marginTop: 15,
+        paddingVertical: 8,
     },
     linkText: {
         color: '#FF5E32',

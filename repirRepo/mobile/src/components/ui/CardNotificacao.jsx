@@ -1,75 +1,74 @@
-import { Ionicons } from '@expo/vector-icons';
 import { StyleSheet, Text, View } from 'react-native';
+import { Image } from 'expo-image';
 
-export function CardNotificacao({
-  titulo = 'Lembrete: Corrida às 18h hoje',
-  tempo = 'Há 10 min',
-  lida = false,
-}) {
+export default function CardNotificacao({ titulo, tempo, iconeMascote }) {
   return (
     <View style={styles.card}>
-      {/* Ícone Circular de Sino */}
-      <View style={styles.iconCircle}>
-        <Ionicons name="notifications-outline" size={22} color="#FFFFFF" />
+      {/* ILUSTRAÇÃO / MASCOTE À ESQUERDA */}
+      <View style={styles.mascotContainer}>
+        <Image
+          source={iconeMascote || require('../assets/mascote/pose1-mascot1.svg')}
+          style={styles.mascot}
+          contentFit="contain"
+        />
       </View>
 
-      {/* Conteúdo de Texto */}
-      <View style={styles.contentContainer}>
-        <Text numberOfLines={1} style={styles.titleText}>
+      {/* CONTEÚDO DE TEXTO À DIREITA */}
+      <View style={styles.content}>
+        <Text style={styles.title} numberOfLines={2}>
           {titulo}
         </Text>
-        <Text style={styles.timeText}>{tempo}</Text>
+        <Text style={styles.time}>
+          {tempo}
+        </Text>
       </View>
-
-      {/* Indicador de Não Lida (Bolinha preta/escura) */}
-      {!lida && <View style={styles.unreadDot} />}
     </View>
   );
 }
 
-export default CardNotificacao;
-
 const styles = StyleSheet.create({
   card: {
     width: '100%',
-    backgroundColor: '#FFFFFF',
-    borderRadius: 20,
-    borderWidth: 1.5,
-    borderColor: '#FF5733', // Borda laranja fina do tema
+    height: 96,
+    backgroundColor: '#FFFBEA', // Tom de fundo creme suave idêntico ao da referência
+    borderRadius: 16,
     paddingHorizontal: 16,
-    paddingVertical: 14,
     flexDirection: 'row',
     alignItems: 'center',
-    marginVertical: 6,
+    overflow: 'hidden',
+    // Borda subtil ou sombra se necessário
+    borderWidth: 1,
+    borderColor: '#F2E8C4',
   },
-  iconCircle: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    backgroundColor: '#FF5733', // Fundo laranja vibrante
+  mascotContainer: {
+    width: 64,
+    height: 64,
+    borderRadius: 32,
+    backgroundColor: '#D2F522', // Fundo verde-lima da onda/mascote
     alignItems: 'center',
     justifyContent: 'center',
-    marginRight: 14,
+    marginRight: 16,
+    overflow: 'hidden',
   },
-  contentContainer: {
+  mascot: {
+    width: 52,
+    height: 52,
+  },
+  content: {
     flex: 1,
-    paddingRight: 12,
+    justifyContent: 'center',
   },
-  titleText: {
-    fontSize: 16,
-    fontWeight: '800',
-    color: '#0F172A',
-    marginBottom: 2,
-  },
-  timeText: {
+  title: {
+    fontFamily: 'Inter_700Bold',
     fontSize: 14,
-    fontWeight: '500',
-    color: '#64748B',
+    lineHeight: 18,
+    color: '#111827',
+    marginBottom: 4,
   },
-  unreadDot: {
-    width: 10,
-    height: 10,
-    borderRadius: 5,
-    backgroundColor: '#0F172A', // Ponto indicador escuro
+  time: {
+    fontFamily: 'Inter_600SemiBold',
+    fontSize: 12,
+    lineHeight: 15,
+    color: '#6B7280',
   },
 });

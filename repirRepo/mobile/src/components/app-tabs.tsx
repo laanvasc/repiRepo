@@ -5,16 +5,19 @@ import { Colors } from '@/constants/theme';
 
 export default function AppTabs() {
   const scheme = useColorScheme();
-  const colors = Colors[scheme === 'unspecified' ? 'light' : scheme];
+  const colors = Colors[scheme === 'dark' ? 'dark' : 'light'];
 
   return (
     <Tabs
+      backBehavior="history"
       screenOptions={{
         headerShown: false,
         tabBarActiveTintColor: '#FF5733',
         tabBarInactiveTintColor: '#8E8E93',
         tabBarStyle: [styles.tabBar, { backgroundColor: colors.background }],
         tabBarLabelStyle: styles.tabBarLabel,
+        // Adiciona suporte a animação de transição horizontal fluida
+        animation: 'shift',
       }}
     >
       {/* 1. Início */}
@@ -103,6 +106,12 @@ export default function AppTabs() {
       />
 
       {/* --- TELAS OCULTAS DA TABBAR --- */}
+      <Tabs.Screen
+        name="cadastrarAtividade"
+        options={{
+          href: null,
+        }}
+      />
       <Tabs.Screen
         name="notificacoes"
         options={{

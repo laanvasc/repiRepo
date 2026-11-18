@@ -1,44 +1,76 @@
-import {
-  Inter_600SemiBold,
-  Inter_700Bold,
-  useFonts,
-} from '@expo-google-fonts/inter';
+import { useEffect, useState } from 'react';
+import { ActivityIndicator, StyleSheet, Text, View } from 'react-native';
 import { Image } from 'expo-image';
-import { StyleSheet, Text, View } from 'react-native';
 import Svg, { Path } from 'react-native-svg';
+import { api } from '@/services/api';
 
-export default function ProximaAtividadeCard() {
-  const [fontsLoaded] = useFonts({ Inter_600SemiBold, Inter_700Bold });
+export default function ProximaAtividadeCard({ usuarioId }) {
+  const [dados, setDados] = useState(null);
+  const [loading, setLoading] = useState(true);
 
-  if (!fontsLoaded) return null;
+  useEffect(() => {
+    if (!usuarioId) {
+      setLoading(false);
+      return;
+    }
+
+    async function carregarProxima() {
+      try {
+        setLoading(true);
+        const response = await api.get(`/usuarios/${usuarioId}/proxima-atividade`);
+        setDados(response.data);
+      } catch (err) {
+        console.error('Erro ao carregar próxima atividade:', err);
+      } finally {
+        setLoading(false);
+      }
+    }
+
+    carregarProxima();
+  }, [usuarioId]);
+
+  const todasConcluidas = dados?.status === 'todas_concluidas' || dados?.status === 'sem_atividades_hoje';
+  const nomeAtividade = dados?.nome || (todasConcluidas ? 'Todas as atividades concluídas!' : 'Nenhuma atividade pendente');
 
   return (
-    <View style={styles.card}>
-      {/* CONTEÚDO DE TEXTO À ESQUERDA */}
+    <View style={[styles.card, todasConcluidas && styles.cardConcluido]}>
       <View style={styles.content}>
-        <Text style={styles.title}>PRÓXIMA ATIVIDADE</Text>
+        <Text style={styles.title}>
+          {todasConcluidas ? 'PARABÉNS!' : 'PRÓXIMA ATIVIDADE'}
+        </Text>
 
         <View style={styles.activityRow}>
           <View style={styles.iconCircle}>
-            <Svg width={28} height={28} viewBox="0 0 48 48">
-              <Path
-                d="M4 25H12L17 14L24 34L30 20L34 25H44"
-                fill="none"
-                stroke="#EE6C42"
-                strokeWidth="3"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-              />
-            </Svg>
+            {loading ? (
+              <ActivityIndicator size="small" color="#EE6C42" />
+            ) : todasConcluidas ? (
+              <Text style={styles.checkEmoji}>🎉</Text>
+            ) : (
+              <Svg width={28} height={28} viewBox="0 0 48 48">
+                <Path
+                  d="M4 25H12L17 14L24 34L30 20L34 25H44"
+                  fill="none"
+                  stroke="#EE6C42"
+                  strokeWidth="3"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                />
+              </Svg>
+            )}
           </View>
 
-          <Text style={styles.activity} numberOfLines={1}>Treino quadriceps</Text>
+          <Text style={styles.activity} numberOfLines={1}>
+            {loading ? 'A carregar...' : nomeAtividade}
+          </Text>
         </View>
       </View>
 
-      {/* MASCOTE À DIREITA (Posicionado de forma segura sem estourar o layout) */}
       <Image
-        source={require('../assets/mascote/pose2-mascot2.svg')}
+        source={
+          todasConcluidas
+            ? require('../assets/mascote/pose2-mascot3.svg')
+            : require('../assets/mascote/pose2-mascot2.svg')
+        }
         style={styles.mascot}
         contentFit="contain"
       />
@@ -49,8 +81,8 @@ export default function ProximaAtividadeCard() {
 const styles = StyleSheet.create({
   card: {
     width: '100%',
-    height: 126, // Altura fixa controlada para o cartão não achatar
-    backgroundColor: '#FFB4ED', // Cor original do fundo do card
+    height: 126,
+    backgroundColor: '#FFB4ED',
     borderRadius: 16,
     padding: 16,
     overflow: 'hidden',
@@ -58,26 +90,25 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'center',
   },
-
+  cardConcluido: {
+    backgroundColor: '#D2F522',
+  },
   content: {
     flex: 1,
     justifyContent: 'center',
-    zIndex: 1, // Garante que o texto fica por cima se necessário
+    zIndex: 1,
   },
-
   title: {
-    fontFamily: 'Inter_600SemiBold',
+    fontWeight: '600',
     fontSize: 13,
     lineHeight: 16,
     color: '#000000',
     marginBottom: 8,
   },
-
   activityRow: {
     flexDirection: 'row',
     alignItems: 'center',
   },
-
   iconCircle: {
     width: 38,
     height: 38,
@@ -87,15 +118,16 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     marginRight: 10,
   },
-
+  checkEmoji: {
+    fontSize: 18,
+  },
   activity: {
-    fontFamily: 'Inter_700Bold',
+    fontWeight: '700',
     fontSize: 15,
     lineHeight: 18,
     color: '#000000',
-    flexShrink: 1, // Evita que texto grande empurre o layout para fora
+    flexShrink: 1,
   },
-
   mascot: {
     width: 95,
     height: 95,

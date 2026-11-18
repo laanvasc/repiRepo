@@ -1,56 +1,88 @@
+import { Ionicons } from '@expo/vector-icons';
 import { StyleSheet, Text, View } from 'react-native';
 import Svg, { Circle } from 'react-native-svg';
 
 export function CardMetasCompletas({
   titulo = 'Meta Semanal\nde atividades',
-  subtitulo = 'Falta apenas 1 atividade!',
-  completadas = 2,
-  total = 6,
+  // Novas props para contar metas (ex: 1 de 2 metas concluídas)
+  metasConcluidas = null, 
+  totalMetas = null,
+  // Props de fallback baseadas em atividades individuais
+  realizadas = 0,
+  meta = 15,
 }) {
-  const radius = 34;
-  const strokeWidth = 9;
-  const size = (radius + strokeWidth) * 2;
-  const circumference = 2 * Math.PI * radius;
+  const raio = 34;
+  const larguraTraco = 9;
+  const tamanho = (raio + larguraTraco) * 2;
+  const circumference = 2 * Math.PI * raio;
 
-  const progressPercentage = Math.min(Math.max(completadas / total, 0), 1);
-  const strokeDashoffset = circumference * (1 - progressPercentage);
+  // Se forem passadas metas específicas, usa-as; senão, usa a contagem por atividades
+  const usandoMetasQuantitativas = metasConcluidas !== null && totalMetas !== null;
+  
+  const atual = usandoMetasQuantitativas ? Math.max(metasConcluidas, 0) : Math.max(realizadas, 0);
+  const total = usandoMetasQuantitativas ? Math.max(totalMetas, 1) : (meta > 0 ? meta : 15);
+
+  const percentagemProgresso = Math.min(Math.max(atual / total, 0), 1);
+  const desvioTraco = circumference * (1 - percentagemProgresso);
+  
+  // Verifica se o total foi atingido
+  const concluido = atual >= total && total > 0;
+  const faltam = total - atual;
+
+  // Subtítulo dinâmico
+  let subtituloDinamico = `Faltam ${faltam} para concluir`;
+  if (concluido) {
+    subtituloDinamico = 'Todas as metas concluídas! 🎉';
+  } else if (faltam === 1) {
+    subtituloDinamico = 'Falta apenas 1 meta!';
+  } else if (atual === 0) {
+    subtituloDinamico = 'Nenhuma meta concluída ainda';
+  }
 
   return (
     <View style={styles.card}>
       <View style={styles.textContainer}>
         <Text style={styles.titleText}>{titulo}</Text>
-        <Text style={styles.subtitleText}>{subtitulo}</Text>
+        <Text style={styles.subtitleText}>{subtituloDinamico}</Text>
       </View>
 
       <View style={styles.progressContainer}>
-        <Svg width={size} height={size}>
-          <Circle
-            cx={size / 2}
-            cy={size / 2}
-            r={radius}
-            stroke="#FFFFFF"
-            strokeWidth={strokeWidth}
-            fill="none"
-          />
-          <Circle
-            cx={size / 2}
-            cy={size / 2}
-            r={radius}
-            stroke="#FF5733"
-            strokeWidth={strokeWidth}
-            fill="none"
-            strokeDasharray={circumference}
-            strokeDashoffset={strokeDashoffset}
-            strokeLinecap="round"
-            transform={`rotate(-90 ${size / 2} ${size / 2})`}
-          />
-        </Svg>
+        {concluido ? (
+          <View style={styles.successIconWrapper}>
+            <Ionicons name="checkmark-circle" size={48} color="#22C55E" />
+          </View>
+        ) : (
+          <>
+            <Svg width={tamanho} height={tamanho}>
+              <Circle
+                cx={tamanho / 2}
+                cy={tamanho / 2}
+                r={raio}
+                stroke="#FFFFFF"
+                strokeWidth={larguraTraco}
+                fill="none"
+              />
+              <Circle
+                cx={tamanho / 2}
+                cy={tamanho / 2}
+                r={raio}
+                stroke="#FF5733"
+                strokeWidth={larguraTraco}
+                fill="none"
+                strokeDasharray={circumference}
+                strokeDashoffset={desvioTraco}
+                strokeLinecap="round"
+                transform={`rotate(-90 ${tamanho / 2} ${tamanho / 2})`}
+              />
+            </Svg>
 
-        <View style={styles.progressTextWrapper}>
-          <Text style={styles.progressText}>
-            {completadas}/{total}
-          </Text>
-        </View>
+            <View style={styles.progressTextWrapper}>
+              <Text style={styles.progressText}>
+                {atual}/{total}
+              </Text>
+            </View>
+          </>
+        )}
       </View>
     </View>
   );
@@ -60,7 +92,7 @@ export default CardMetasCompletas;
 
 const styles = StyleSheet.create({
   card: {
-    width: '100%', // Ajustado de 120% para 100%
+    width: '100%',
     backgroundColor: '#FFB7F5',
     borderRadius: 24,
     paddingHorizontal: 20,
@@ -72,7 +104,7 @@ const styles = StyleSheet.create({
   },
   textContainer: {
     flex: 1,
-    flexShrink: 1, // Evita que textos longos empurrem o círculo para fora
+    flexShrink: 1,
     paddingRight: 12,
     justifyContent: 'center',
   },
@@ -94,6 +126,14 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     position: 'relative',
+  },
+  successIconWrapper: {
+    width: '100%',
+    height: '100%',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#FFFFFF',
+    borderRadius: 43,
   },
   progressTextWrapper: {
     position: 'absolute',

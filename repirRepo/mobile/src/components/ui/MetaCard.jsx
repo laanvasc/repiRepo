@@ -1,3 +1,4 @@
+import { Ionicons } from '@expo/vector-icons';
 import { ActivityIndicator, Image, Pressable, StyleSheet, Text, View } from 'react-native';
 
 // Importação com o alias no topo
@@ -11,6 +12,7 @@ export default function MetaCard({
   disabled = false,
   variante = 'test',
   iconeMeta,
+  concluido = false, // Nova prop para verificar se foi concluído
 }) {
   return (
     <Pressable
@@ -40,9 +42,13 @@ export default function MetaCard({
         )}
       </View>
 
-      {/* Ícone de Fechar (✕) à direita */}
+      {/* Ícone à direita: Visto verde se concluído, ou o '✕' padrão */}
       <View style={styles.actionContainer}>
-        <Text style={styles.actionIcon}>✕</Text>
+        {concluido ? (
+          <Ionicons name="checkmark-circle" size={28} color="#22C55E" />
+        ) : (
+          <Text style={styles.actionIcon}>✕</Text>
+        )}
       </View>
     </Pressable>
   );
@@ -91,6 +97,8 @@ const styles = StyleSheet.create({
   },
   actionContainer: {
     paddingRight: 8,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   actionIcon: {
     fontSize: 22,
