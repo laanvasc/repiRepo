@@ -123,17 +123,19 @@ export default function AtividadesScreen() {
     }
 
     try {
+      setLoading(true);
       const response = await api.get(`/usuarios/${usuarioId}/atividades-frequentes`);
       setAtividades(response.data || []);
     } catch (err) {
       console.error('Erro ao carregar atividades frequentes:', err.response?.data || err.message);
     } finally {
-      setLoading(false);
+      setTimeout(() => {
+        setLoading(false);
+      }, 500);
     }
   };
 
   useEffect(() => {
-    setLoading(true);
     carregarAtividadesFrequentes();
   }, [usuarioId]);
 
@@ -191,50 +193,44 @@ export default function AtividadesScreen() {
             />
           }
         >
-          {loading ? (
-            <View style={styles.loaderContainer}>
-              <ActivityIndicator size="large" color="#FF5E32" />
-            </View>
-          ) : (
-            <ThemedView style={styles.cardsContainer}>
-              {atividades.length > 0 ? (
-                atividades.map((item, index) => {
-                  const catStyle = getCategoryStyle(item, index);
+          <ThemedView style={styles.cardsContainer}>
+            {atividades.length > 0 ? (
+              atividades.map((item, index) => {
+                const catStyle = getCategoryStyle(item, index);
 
-                  return (
-                    <AtividadeFrequenteCard
-  key={item.id_atividade_frequente}
-  titulo={item.nome_atividade}
-  horario={item.horario}
-  categoria={catStyle.categoria} // <--- Alterado de item.categoria_atividade para catStyle.categoria
-  concluida={item.realizada_hoje}
-  cardStyle={{ 
-    backgroundColor: catStyle.bg, 
-    borderColor: catStyle.border 
-  }}
-  textColor={catStyle.text}
-  onPress={() => {
-    if (item.realizada_hoje) {
-      return;
-    }
+                return (
+                  <AtividadeFrequenteCard
+                    key={item.id_atividade_frequente}
+                    titulo={item.nome_atividade}
+                    horario={item.horario}
+                    categoria={catStyle.categoria}
+                    concluida={item.realizada_hoje}
+                    cardStyle={{ 
+                      backgroundColor: catStyle.bg, 
+                      borderColor: catStyle.border 
+                    }}
+                    textColor={catStyle.text}
+                    onPress={() => {
+                      if (item.realizada_hoje) {
+                        return;
+                      }
 
-    router.push({
-      pathname: '/registrarAtividade',
-      params: {
-        id_atividade: item.id_atividade,
-        nome_atividade: item.nome_atividade,
-        horario: item.horario || 'Horário flexível',
-      },
-    });
-  }}
-/>
-                  );
-                })
-              ) : (
-                <Text style={styles.emptyText}>Nenhuma atividade frequente encontrada.</Text>
-              )}
-            </ThemedView>
-          )}
+                      router.push({
+                        pathname: '/registrarAtividade',
+                        params: {
+                          id_atividade: item.id_atividade,
+                          nome_atividade: item.nome_atividade,
+                          horario: item.horario || 'Horário flexível',
+                        },
+                      });
+                    }}
+                  />
+                );
+              })
+            ) : (
+              <Text style={styles.emptyText}>Nenhuma atividade frequente encontrada.</Text>
+            )}
+          </ThemedView>
 
           <TouchableOpacity 
             style={styles.addBottomButton}
@@ -245,9 +241,9 @@ export default function AtividadesScreen() {
             <Text style={styles.addBottomButtonText}>Adicionar nova atividade</Text>
           </TouchableOpacity>
 
-          <ThemedView style={styles.buttonContainer}>
+          {/* <ThemedView style={styles.buttonContainer}>
             <Button titulo="Finalizar atividades diárias" onPress={handleFinalizarAtividades} />
-          </ThemedView>
+          </ThemedView> */}
 
           <ThemedView style={styles.footerContainer}>
             <ThemedText style={styles.footerText}>✨ Chegaste ao fim das atividades</ThemedText>
@@ -255,6 +251,14 @@ export default function AtividadesScreen() {
 
           {Platform.OS === 'web' && <WebBadge />}
         </ScrollView>
+
+        {/* OVERLAY DE CARREGAMENTO DE TELA INTEIRA */}
+        {loading && (
+          <View style={styles.overlayCarregamento}>
+            <ActivityIndicator size="large" color="#FF5733" />
+            <Text style={styles.textoCarregamento}>A carregar as atividades...</Text>
+          </View>
+        )}
       </SafeAreaView>
     </ThemedView>
   );
@@ -314,12 +318,6 @@ const styles = StyleSheet.create({
     marginTop: Spacing.one,
     width: '100%',
   },
-  loaderContainer: {
-    paddingVertical: Spacing.five,
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: 'transparent',
-  },
   emptyText: {
     textAlign: 'center',
     fontSize: 14,
@@ -338,5 +336,22 @@ const styles = StyleSheet.create({
     fontSize: 13,
     color: '#888888',
     opacity: 0.8,
+  },
+  overlayCarregamento: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: '#FFF7FF',
+    justifyContent: 'center',
+    alignItems: 'center',
+    zIndex: 9999,
+    gap: 12,
+  },
+  textoCarregamento: {
+    fontSize: 15,
+    fontWeight: '600',
+    color: '#1E293B',
   },
 });

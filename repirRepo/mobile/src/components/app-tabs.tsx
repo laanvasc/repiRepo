@@ -16,6 +16,8 @@ export default function AppTabs() {
         tabBarInactiveTintColor: '#8E8E93',
         tabBarStyle: [styles.tabBar, { backgroundColor: colors.background }],
         tabBarLabelStyle: styles.tabBarLabel,
+        // Adiciona suporte a animação de transição horizontal fluida
+        animation: 'shift',
       }}
     >
       {/* 1. Início */}

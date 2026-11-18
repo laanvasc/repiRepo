@@ -65,11 +65,9 @@ export default function RegistrarAtividadeScreen() {
         xp_ganho: 50, // XP fixo por conclusão ou dinâmico
       });
 
-      // DEPOIS (volta para a lista de atividades atualizada)
-      router.push('/(auth)/atividades'); 
-      // ou se preferires mostrar um Alerta de sucesso antes de voltar:
+      // Sucesso: exibe o alerta e retorna à tela anterior (lista de atividades)
       Alert.alert('Sucesso!', 'Atividade registada com sucesso! +50 XP', [
-        { text: 'OK', onPress: () => router.push('/(auth)/atividades') }
+        { text: 'OK', onPress: () => router.back() }
       ]);
     } catch (err) {
       console.error('Erro ao registar atividade:', err.response?.data || err.message);

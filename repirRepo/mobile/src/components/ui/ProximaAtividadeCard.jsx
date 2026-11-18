@@ -1,78 +1,76 @@
-import {
-  Inter_600SemiBold,
-  Inter_700Bold,
-  useFonts,
-} from '@expo-google-fonts/inter';
+import { useEffect, useState } from 'react';
+import { ActivityIndicator, StyleSheet, Text, View } from 'react-native';
 import { Image } from 'expo-image';
-import { StyleSheet, Text, View } from 'react-native';
 import Svg, { Path } from 'react-native-svg';
+import { api } from '@/services/api';
 
-// Função auxiliar para calcular qual é a atividade mais próxima com base na hora atual
-function encontrarProximaAtividade(atividades) {
-  if (!atividades || atividades.length === 0) return null;
+export default function ProximaAtividadeCard({ usuarioId }) {
+  const [dados, setDados] = useState(null);
+  const [loading, setLoading] = useState(true);
 
-  const agora = new Date();
-  const minutosAtuais = agora.getHours() * 60 + agora.getMinutes();
+  useEffect(() => {
+    if (!usuarioId) {
+      setLoading(false);
+      return;
+    }
 
-  // Mapeia todas as atividades e converte o horário para minutos do dia
-  const atividadesComMinutos = atividades.map((item) => {
-    const horarioStr = item.horario || '00:00';
-    const [horas, minutos] = horarioStr.split(':').map(Number);
-    const totalMinutos = (horas || 0) * 60 + (minutos || 0);
-    return { ...item, totalMinutos };
-  });
+    async function carregarProxima() {
+      try {
+        setLoading(true);
+        const response = await api.get(`/usuarios/${usuarioId}/proxima-atividade`);
+        setDados(response.data);
+      } catch (err) {
+        console.error('Erro ao carregar próxima atividade:', err);
+      } finally {
+        setLoading(false);
+      }
+    }
 
-  // Filtra apenas as atividades que ainda vão acontecer hoje (horário > hora atual)
-  const futuras = atividadesComMinutos.filter((item) => item.totalMinutos >= minutosAtuais);
+    carregarProxima();
+  }, [usuarioId]);
 
-  if (futuras.length > 0) {
-    // Ordena da mais próxima para a mais distante e pega a primeira
-    futuras.sort((a, b) => a.totalMinutos - b.totalMinutos);
-    return futuras[0];
-  }
-
-  // Se já passaram todas as atividades de hoje, opcionalmente retorna a primeira de amanhã (ou a primeira do dia)
-  atividadesComMinutos.sort((a, b) => a.totalMinutos - b.totalMinutos);
-  return atividadesComMinutos[0];
-}
-
-export default function ProximaAtividadeCard({ atividades = [] }) {
-  const [fontsLoaded] = useFonts({ Inter_600SemiBold, Inter_700Bold });
-
-  // Calcula dinamicamente a próxima atividade com base no relógio
-  const proxima = encontrarProximaAtividade(atividades);
-
-  if (!fontsLoaded) return null;
+  const todasConcluidas = dados?.status === 'todas_concluidas' || dados?.status === 'sem_atividades_hoje';
+  const nomeAtividade = dados?.nome || (todasConcluidas ? 'Todas as atividades concluídas!' : 'Nenhuma atividade pendente');
 
   return (
-    <View style={styles.card}>
-      {/* CONTEÚDO DE TEXTO À ESQUERDA */}
+    <View style={[styles.card, todasConcluidas && styles.cardConcluido]}>
       <View style={styles.content}>
-        <Text style={styles.title}>PRÓXIMA ATIVIDADE</Text>
+        <Text style={styles.title}>
+          {todasConcluidas ? 'PARABÉNS!' : 'PRÓXIMA ATIVIDADE'}
+        </Text>
 
         <View style={styles.activityRow}>
           <View style={styles.iconCircle}>
-            <Svg width={28} height={28} viewBox="0 0 48 48">
-              <Path
-                d="M4 25H12L17 14L24 34L30 20L34 25H44"
-                fill="none"
-                stroke="#EE6C42"
-                strokeWidth="3"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-              />
-            </Svg>
+            {loading ? (
+              <ActivityIndicator size="small" color="#EE6C42" />
+            ) : todasConcluidas ? (
+              <Text style={styles.checkEmoji}>🎉</Text>
+            ) : (
+              <Svg width={28} height={28} viewBox="0 0 48 48">
+                <Path
+                  d="M4 25H12L17 14L24 34L30 20L34 25H44"
+                  fill="none"
+                  stroke="#EE6C42"
+                  strokeWidth="3"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                />
+              </Svg>
+            )}
           </View>
 
           <Text style={styles.activity} numberOfLines={1}>
-            {proxima ? proxima.nome_atividade || proxima.titulo : 'Nenhuma atividade pendente'}
+            {loading ? 'A carregar...' : nomeAtividade}
           </Text>
         </View>
       </View>
 
-      {/* MASCOTE À DIREITA */}
       <Image
-        source={require('../assets/mascote/pose2-mascot2.svg')}
+        source={
+          todasConcluidas
+            ? require('../assets/mascote/pose2-mascot3.svg')
+            : require('../assets/mascote/pose2-mascot2.svg')
+        }
         style={styles.mascot}
         contentFit="contain"
       />
@@ -92,13 +90,16 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'center',
   },
+  cardConcluido: {
+    backgroundColor: '#D2F522',
+  },
   content: {
     flex: 1,
     justifyContent: 'center',
     zIndex: 1,
   },
   title: {
-    fontFamily: 'Inter_600SemiBold',
+    fontWeight: '600',
     fontSize: 13,
     lineHeight: 16,
     color: '#000000',
@@ -117,8 +118,11 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     marginRight: 10,
   },
+  checkEmoji: {
+    fontSize: 18,
+  },
   activity: {
-    fontFamily: 'Inter_700Bold',
+    fontWeight: '700',
     fontSize: 15,
     lineHeight: 18,
     color: '#000000',

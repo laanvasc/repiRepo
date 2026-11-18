@@ -1,4 +1,4 @@
-import { Controller, Get, Param, Post, Body } from '@nestjs/common';
+import { Controller, Get, Param, Post, Body, ParseIntPipe } from '@nestjs/common';
 import { AppService } from './app.service.js';
 
 @Controller('usuarios') // <-- Prefixo da rota
@@ -20,10 +20,25 @@ export class AppController {
     return this.appService.getUsuarioXp(Number(id));
   }
 
+@Get(':id/destaques-semanais')
+  async getDestaquesSemanais(@Param('id') id: string) {
+    return this.appService.getDestaquesSemanais(Number(id));
+  }
+
+  @Get(':id/proxima-atividade')
+  async getProximaAtividade(@Param('id') id: string) {
+    return this.appService.getProximaAtividade(Number(id));
+  }
+
   // Rota para listar o catálogo de atividades disponíveis na tabela mestre
   @Get('catalogo-atividades')
   async getAtividadesCatalogo() {
     return this.appService.getAtividadesCatalogo();
+  }
+
+  @Get(':id/notificacoes')
+  async getNotificacoesUsuario(@Param('id') id: string) {
+    return this.appService.getNotificacoesUsuario(Number(id));
   }
 
   @Post(':id/registrar-atividade')
@@ -58,6 +73,11 @@ export class AppController {
   ) {
     return this.appService.criarAtividadeFrequente(Number(id), body);
   }
+
+@Get(':id/progresso-semanal')
+async obterProgressoSemanal(@Param('id') id: string) {
+  return this.appService.calcularProgressoSemanal(Number(id));
+}
 
   // Rota para verificar e atualizar a ofensiva do usuário
   @Get(':id/ofensiva') 

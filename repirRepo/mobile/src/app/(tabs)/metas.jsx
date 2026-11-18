@@ -1,6 +1,6 @@
 import { router } from 'expo-router';
 import { useCallback, useEffect, useState } from 'react';
-import { ActivityIndicator, Platform, RefreshControl, ScrollView, StyleSheet, View } from 'react-native';
+import { ActivityIndicator, Platform, RefreshControl, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import HeaderAreaView from '@/components/header-area-view';
@@ -28,17 +28,19 @@ export default function MetaScreen() {
     }
 
     try {
+      setLoading(true);
       const response = await api.get(`/usuarios/${usuarioId}/metas-progresso`);
       setMetas(response.data);
     } catch (err) {
       console.error('Erro ao carregar metas e progresso:', err.response?.data || err.message);
     } finally {
-      setLoading(false);
+      setTimeout(() => {
+        setLoading(false);
+      }, 500);
     }
   };
 
   useEffect(() => {
-    setLoading(true);
     carregarMetas();
   }, [usuarioId]);
 
@@ -81,47 +83,41 @@ export default function MetaScreen() {
             />
           }
         >
-          {loading ? (
-            <View style={styles.loaderContainer}>
-              <ActivityIndicator size="large" color="#FF5733" />
-            </View>
-          ) : (
-            <ThemedView style={styles.titleContainer}>
-              {/* Card de Progresso Semanal Geral (Carregado dinamicamente do backend) */}
-              <CardMetasCompletas 
-                realizadas={metas?.progresso_semanal?.realizadas || 0} 
-                meta={metas?.progresso_semanal?.meta || 15} 
+          <ThemedView style={styles.titleContainer}>
+            {/* Card de Progresso Semanal Geral (Carregado dinamicamente do backend) */}
+            <CardMetasCompletas 
+              realizadas={metas?.progresso_semanal?.realizadas || 0} 
+              meta={metas?.progresso_semanal?.meta || 15} 
+            />
+
+            {/* Seção: Metas do Dia */}
+            <ThemedText style={styles.sectionTitle} themeColor="textSecondary">
+              Metas do dia
+            </ThemedText>
+
+            <ThemedView style={styles.cardsContainer}>
+              <MetaCard
+                tituloMeta={`Concluir ${metas?.progresso_diario?.meta || 3} atividades hoje`}
+                progresso={`${metas?.progresso_diario?.realizadas || 0}/${metas?.progresso_diario?.meta || 3}`}
+                concluido={metas?.progresso_diario?.concluido || false}
+                onPress={() => console.log('Meta diária clicada')}
               />
-
-              {/* Seção: Metas do Dia */}
-              <ThemedText style={styles.sectionTitle} themeColor="textSecondary">
-                Metas do dia
-              </ThemedText>
-
-              <ThemedView style={styles.cardsContainer}>
-                <MetaCard
-                  tituloMeta={`Concluir ${metas?.progresso_diario?.meta || 3} atividades hoje`}
-                  progresso={`${metas?.progresso_diario?.realizadas || 0}/${metas?.progresso_diario?.meta || 3}`}
-                  concluido={metas?.progresso_diario?.concluido || false}
-                  onPress={() => console.log('Meta diária clicada')}
-                />
-              </ThemedView>
-
-              {/* Seção: Metas da Semana */}
-              <ThemedText style={styles.sectionTitle} themeColor="textSecondary">
-                Metas da semana
-              </ThemedText>
-
-              <ThemedView style={styles.cardsContainer}>
-                <MetaCard
-                  tituloMeta={`Completar ${metas?.progresso_semanal?.meta || 15} atividades esta semana`}
-                  progresso={`${metas?.progresso_semanal?.realizadas || 0}/${metas?.progresso_semanal?.meta || 15}`}
-                  concluido={metas?.progresso_semanal?.concluido || false}
-                  onPress={() => console.log('Meta semanal clicada')}
-                />
-              </ThemedView>
             </ThemedView>
-          )}
+
+            {/* Seção: Metas da Semana */}
+            <ThemedText style={styles.sectionTitle} themeColor="textSecondary">
+              Metas da semana
+            </ThemedText>
+
+            <ThemedView style={styles.cardsContainer}>
+              <MetaCard
+                tituloMeta={`Completar ${metas?.progresso_semanal?.meta || 15} atividades esta semana`}
+                progresso={`${metas?.progresso_semanal?.realizadas || 0}/${metas?.progresso_semanal?.meta || 15}`}
+                concluido={metas?.progresso_semanal?.concluido || false}
+                onPress={() => console.log('Meta semanal clicada')}
+              />
+            </ThemedView>
+          </ThemedView>
 
           {/* Indicador visual de fim de conteúdo */}
           <ThemedView style={styles.footerContainer}>
@@ -130,6 +126,14 @@ export default function MetaScreen() {
 
           {Platform.OS === 'web' && <WebBadge />}
         </ScrollView>
+
+        {/* OVERLAY DE CARREGAMENTO DE TELA INTEIRA */}
+        {loading && (
+          <View style={styles.overlayCarregamento}>
+            <ActivityIndicator size="large" color="#FF5733" />
+            <Text style={styles.textoCarregamento}>A carregar as metas...</Text>
+          </View>
+        )}
       </SafeAreaView>
     </ThemedView>
   );
@@ -174,11 +178,6 @@ const styles = StyleSheet.create({
     gap: Spacing.two,
     backgroundColor: 'transparent',
   },
-  loaderContainer: {
-    paddingVertical: Spacing.five,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
   footerContainer: {
     alignItems: 'center',
     justifyContent: 'center',
@@ -190,5 +189,22 @@ const styles = StyleSheet.create({
     fontSize: 13,
     color: '#888888',
     opacity: 0.8,
+  },
+  overlayCarregamento: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: '#FFF7FF',
+    justifyContent: 'center',
+    alignItems: 'center',
+    zIndex: 9999,
+    gap: 12,
+  },
+  textoCarregamento: {
+    fontSize: 15,
+    fontWeight: '600',
+    color: '#1E293B',
   },
 });

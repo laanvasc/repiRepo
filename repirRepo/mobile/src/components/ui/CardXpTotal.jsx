@@ -66,11 +66,13 @@ export function CardXpTotal({ usuarioId }) {
     );
   }
 
-  // Extrai os dados retornados do NestJS com valores de fallback seguros
-  const xpTotal = dados.xp ?? 0;
-  const nivel = dados.nivel ?? 1;
-  const xpAtualNivel = dados.xpAtualNivel ?? 0;
-  const xpNecessarioNivel = dados.xpNecessarioNivel ?? 1000;
+  // Extrai os dados do backend
+  const xpTotal = Number(dados.xp ?? 0);
+  const nivel = Number(dados.nivel ?? 1);
+
+  // Cada nível requer 1000 XP. Calculamos o progresso atual dentro do nível corrente.
+  const xpNecessarioNivel = 1000;
+  const xpAtualNivel = xpTotal % xpNecessarioNivel; // O resto da divisão dá os pontos acumulados no nível atual
 
   // Cálculo da barra de progresso e XP restante
   const progresso = Math.min(Math.max(xpAtualNivel / xpNecessarioNivel, 0), 1) * 100;
@@ -83,7 +85,7 @@ export function CardXpTotal({ usuarioId }) {
 
       {/* Subtítulo XP Total */}
       <Text style={styles.xpTotalText}>
-        {Number(xpTotal).toLocaleString('pt-BR')} XP total
+        {xpTotal.toLocaleString('pt-BR')} XP total
       </Text>
 
       {/* Barra de Progresso */}  
