@@ -6,18 +6,21 @@ import {
   Inter_700Bold,
   useFonts,
 } from '@expo-google-fonts/inter';
-import { api } from '../../services/api'; // Importa a tua instância centralizada do Axios
+import { api } from '../../services/api';
 
-async function fetchUsuarioOfensiva(usuarioId) {
-  try {
-    console.log(`A chamar API de ofensiva para o ID: ${usuarioId}`);
-    const response = await api.get(`/usuarios/${usuarioId}/ofensiva`);
-    console.log('Dados de ofensiva recebidos com sucesso:', response.data);
-    return response.data;
-  } catch (err) {
-    console.error('Erro detalhado de conexão:', err.message);
-    throw err;
-  }
+async function fetchDadosOfensiva(usuarioId) {
+  const [resOfensiva, resAtividades] = await Promise.all([
+    api.get(`/usuarios/${usuarioId}/ofensiva`),
+    api.get(`/usuarios/${usuarioId}/atividades-frequentes`).catch(() => ({ data: [] })),
+  ]);
+
+  const listaAtividades = Array.isArray(resAtividades.data) ? resAtividades.data : [];
+  const concluiuAlgumaHoje = listaAtividades.some((item) => item.realizada_hoje === true);
+
+  return {
+    ofensivaAtual: resOfensiva.data?.ofensivaAtual ?? 0,
+    concluiuAlgumaHoje,
+  };
 }
 
 export function CardOfensiva({ usuarioId }) {
@@ -27,27 +30,38 @@ export function CardOfensiva({ usuarioId }) {
   const [fontsLoaded] = useFonts({ Inter_600SemiBold, Inter_700Bold });
 
   useEffect(() => {
-    // Se o ID ainda for null ou undefined, nem tenta chamar a API!
     if (!usuarioId) {
       setLoading(false);
-      return; 
+      return;
     }
+
+    let ativo = true;
 
     async function carregarDados() {
       try {
         setLoading(true);
         setErro(false);
-        const resposta = await fetchUsuarioOfensiva(usuarioId);
-        setDados(resposta); // <-- Corrigido para usar setDados em vez de setOfensiva
+        const resposta = await fetchDadosOfensiva(usuarioId);
+        if (ativo) {
+          setDados(resposta);
+        }
       } catch (err) {
         console.error('Erro ao carregar ofensiva:', err);
-        setErro(true);
+        if (ativo) {
+          setErro(true);
+        }
       } finally {
-        setLoading(false);
+        if (ativo) {
+          setLoading(false);
+        }
       }
     }
 
     carregarDados();
+
+    return () => {
+      ativo = false;
+    };
   }, [usuarioId]);
 
   if (!fontsLoaded) {
@@ -70,7 +84,8 @@ export function CardOfensiva({ usuarioId }) {
     );
   }
 
-  const diasOfensiva = dados.ofensivaAtual ?? 0;
+  // Só mantém a ofensiva ativa visível se o utilizador tiver concluído ao menos 1 atividade hoje
+  const diasOfensiva = dados.concluiuAlgumaHoje ? (dados.ofensivaAtual ?? 0) : 0;
 
   return (
     <ImageBackground

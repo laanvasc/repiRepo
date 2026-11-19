@@ -1,7 +1,7 @@
 import { Ionicons } from '@expo/vector-icons';
 import { Image } from 'expo-image';
 import { router } from 'expo-router';
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { ActivityIndicator, Alert, Platform, RefreshControl, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
@@ -16,6 +16,17 @@ import { WebBadge } from '@/components/web-badge';
 import { BottomTabInset, MaxContentWidth, Spacing } from '@/constants/theme';
 import { useAuth } from '@/context/AuthContext';
 import { api } from '@/services/api';
+
+// Mapeia getDay() (0 = Domingo ... 6 = Sábado) para a chave booleana e o rótulo do dia
+const MAPA_DIAS_SEMANA = {
+  0: { key: 'repete_dom', label: 'Domingo' },
+  1: { key: 'repete_seg', label: 'Segunda-feira' },
+  2: { key: 'repete_ter', label: 'Terça-feira' },
+  3: { key: 'repete_qua', label: 'Quarta-feira' },
+  4: { key: 'repete_qui', label: 'Quinta-feira' },
+  5: { key: 'repete_sex', label: 'Sexta-feira' },
+  6: { key: 'repete_sab', label: 'Sábado' },
+};
 
 // Função auxiliar para definir cores e metadados baseados na categoria_atividade ou no nome da atividade
 const getCategoryStyle = (item, index = 0) => {
@@ -116,6 +127,11 @@ export default function AtividadesScreen() {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
 
+  const diaAtualInfo = useMemo(() => {
+    const idxDia = new Date().getDay();
+    return MAPA_DIAS_SEMANA[idxDia] || MAPA_DIAS_SEMANA[3];
+  }, []);
+
   const carregarAtividadesFrequentes = async () => {
     if (!usuarioId) {
       setLoading(false);
@@ -125,7 +141,7 @@ export default function AtividadesScreen() {
     try {
       setLoading(true);
       const response = await api.get(`/usuarios/${usuarioId}/atividades-frequentes`);
-      setAtividades(response.data || []);
+      setAtividades(Array.isArray(response.data) ? response.data : []);
     } catch (err) {
       console.error('Erro ao carregar atividades frequentes:', err.response?.data || err.message);
     } finally {
@@ -158,6 +174,11 @@ export default function AtividadesScreen() {
       Alert.alert('Erro', 'Não foi possível concluir as atividades.');
     }
   };
+
+  // Filtra apenas as atividades frequentes agendadas para o dia da semana atual
+  const atividadesDoDia = useMemo(() => {
+    return atividades.filter((item) => Boolean(item?.[diaAtualInfo.key]) === true);
+  }, [atividades, diaAtualInfo.key]);
 
   return (
     <ThemedView style={styles.container}>
@@ -194,8 +215,12 @@ export default function AtividadesScreen() {
           }
         >
           <ThemedView style={styles.cardsContainer}>
-            {atividades.length > 0 ? (
-              atividades.map((item, index) => {
+            <ThemedText type="subtitle" style={styles.diaTitle}>
+              {diaAtualInfo.label}
+            </ThemedText>
+
+            {atividadesDoDia.length > 0 ? (
+              atividadesDoDia.map((item, index) => {
                 const catStyle = getCategoryStyle(item, index);
 
                 return (
@@ -205,9 +230,9 @@ export default function AtividadesScreen() {
                     horario={item.horario}
                     categoria={catStyle.categoria}
                     concluida={item.realizada_hoje}
-                    cardStyle={{ 
-                      backgroundColor: catStyle.bg, 
-                      borderColor: catStyle.border 
+                    cardStyle={{
+                      backgroundColor: catStyle.bg,
+                      borderColor: catStyle.border,
                     }}
                     textColor={catStyle.text}
                     onPress={() => {
@@ -228,11 +253,13 @@ export default function AtividadesScreen() {
                 );
               })
             ) : (
-              <Text style={styles.emptyText}>Nenhuma atividade frequente encontrada.</Text>
+              <Text style={styles.emptyText}>
+                Nenhuma atividade agendada para {diaAtualInfo.label.toLowerCase()}.
+              </Text>
             )}
           </ThemedView>
 
-          <TouchableOpacity 
+          <TouchableOpacity
             style={styles.addBottomButton}
             onPress={() => router.push('/cadastrarAtividade')}
             activeOpacity={0.8}
@@ -293,6 +320,10 @@ const styles = StyleSheet.create({
     gap: Spacing.two,
     backgroundColor: 'transparent',
     width: '100%',
+  },
+  diaTitle: {
+    fontSize: 16,
+    fontWeight: '700',
   },
   addBottomButton: {
     flexDirection: 'row',

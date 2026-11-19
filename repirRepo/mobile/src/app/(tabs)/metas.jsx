@@ -85,10 +85,12 @@ export default function MetaScreen() {
         >
           <ThemedView style={styles.titleContainer}>
             {/* Card de Progresso Semanal Geral (Carregado dinamicamente do backend) */}
-            <CardMetasCompletas 
+           
+           {/* AJUSTAR ISSO */}
+            {/* <CardMetasCompletas 
               realizadas={metas?.progresso_semanal?.realizadas || 0} 
               meta={metas?.progresso_semanal?.meta || 15} 
-            />
+            /> */}
 
             {/* Seção: Metas do Dia */}
             <ThemedText style={styles.sectionTitle} themeColor="textSecondary">
