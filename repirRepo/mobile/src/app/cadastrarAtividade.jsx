@@ -1,6 +1,6 @@
 import { router } from 'expo-router';
 import { useEffect, useState } from 'react';
-import { Alert, Platform, ScrollView, StyleSheet, Text, View, Pressable } from 'react-native';
+import { Alert, Platform, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import HeaderAreaView from '@/components/header-area-view';
@@ -16,22 +16,21 @@ import { api } from '@/services/api';
 
 export default function CadastrarAtividadeScreen() {
   const { usuarioId } = useAuth();
-  
+
   const [listaAtividades, setListaAtividades] = useState([]);
   const [atividadeSelecionadaId, setAtividadeSelecionadaId] = useState(null);
   const [diasRepeticao, setDiasRepeticao] = useState(['ter', 'qua', 'sex']);
   const [horarioValue, setHorario] = useState('18:00');
   const [loading, setLoading] = useState(false);
 
-  // Busca as atividades disponíveis na tabela mestre ao carregar o ecrã
- // Busca as atividades disponíveis na tabela mestre ao carregar o ecrã
   useEffect(() => {
     async function carregarCatalogo() {
       try {
-        const response = await api.get('/usuarios/catalogo-atividades'); // Adicionado '/usuarios'
-        setListaAtividades(response.data);
-        if (response.data.length > 0) {
-          setAtividadeSelecionadaId(response.data[0].id_atividade);
+        const response = await api.get('/usuarios/catalogo-atividades');
+        const dados = Array.isArray(response.data) ? response.data : [];
+        setListaAtividades(dados);
+        if (dados.length > 0) {
+          setAtividadeSelecionadaId(dados[0].id_atividade);
         }
       } catch (err) {
         console.error('Erro ao carregar catálogo de atividades:', err);
@@ -39,7 +38,7 @@ export default function CadastrarAtividadeScreen() {
     }
     carregarCatalogo();
   }, []);
-  
+
   const toggleDia = (id) => {
     setDiasRepeticao((prev) =>
       prev.includes(id) ? prev.filter((d) => d !== id) : [...prev, id]
@@ -69,28 +68,36 @@ export default function CadastrarAtividadeScreen() {
         repete_sab: diasRepeticao.includes('sab'),
         repete_dom: diasRepeticao.includes('dom'),
       };
-      
-      // Envia o id_atividade selecionado e os dias/horário para a API
+
       await api.post(`/usuarios/${usuarioId}/atividades-frequentes`, {
         id_atividade: Number(atividadeSelecionadaId),
         ...diasObj,
         horario: horarioValue,
       });
 
-      router.push('/(auth)/sucesso');
-
+      if (Platform.OS === 'web') {
+        window.alert('Atividade cadastrada com sucesso!');
+        router.replace('/(tabs)/atividades');
+      } else {
+        Alert.alert(
+          'Sucesso!',
+          'Atividade cadastrada com sucesso!',
+          [
+            {
+              text: 'OK',
+              onPress: () => router.replace('/(tabs)/atividades'),
+            },
+          ],
+          { cancelable: false }
+        );
+      }
     } catch (err) {
       console.error('Erro ao criar atividade:', err.response?.data || err.message);
-      
-      const mensagemServidor = err.response?.data?.message || 'Não foi possível cadastrar a atividade.';
 
-      router.push({
-        pathname: '/(auth)/erro',
-        params: {
-          titulo: 'Erro ao cadastrar',
-          mensagem: mensagemServidor,
-        },
-      });
+      const mensagemServidor =
+        err.response?.data?.message || 'Não foi possível cadastrar a atividade.';
+
+      Alert.alert('Erro ao cadastrar', mensagemServidor);
     } finally {
       setLoading(false);
     }
@@ -109,8 +116,6 @@ export default function CadastrarAtividadeScreen() {
           style={styles.scroll}
         >
           <ThemedView style={styles.formContainer}>
-            
-            {/* Seletor de Atividades da Tabela Mestre */}
             <Text style={styles.label}>Selecione a Atividade</Text>
             <View style={styles.catalogoContainer}>
               {listaAtividades.map((item) => {
@@ -139,8 +144,8 @@ export default function CadastrarAtividadeScreen() {
               onChangeHorario={(value) => setHorario(value)}
             />
 
-            <Button 
-              titulo={loading ? "A associar..." : "Salvar Atividade"} 
+            <Button
+              titulo={loading ? 'A associar...' : 'Salvar Atividade'}
               onPress={handleCriarAtividade}
               disabled={loading}
             />

@@ -424,23 +424,73 @@ async getDestaquesSemanais(id: number) {
   // ==========================================
   // NOVOS MÉTODOS PARA O MENSAL CARD & OFENSIVA
   // ==========================================
-  async getDadosMensais(usuarioId: number) {
+async getDadosMensais(usuarioId: number) {
     const idBigInt = this.validarId(usuarioId);
-    const atividades = await this.prisma.usuario_atividades.findMany({
-      where: { id_usuario: idBigInt },
-    }).catch(() => []); 
+    const agora = new Date();
+    const anoAtual = agora.getFullYear();
+    const mesAtual = agora.getMonth(); // 0-indexed (0 = Jan, 10 = Nov)
+    const diaHoje = agora.getDate();
 
-    const diasConcluidos = [...new Set(atividades.map((a: any) => {
-      return a.data_realizacao ? new Date(a.data_realizacao).getDate() : null;
-    }).filter(Boolean))];
+    const inicioMes = new Date(anoAtual, mesAtual, 1, 0, 0, 0, 0);
+    const fimMes = new Date(anoAtual, mesAtual + 1, 0, 23, 59, 59, 999);
+    const totalDiasMes = fimMes.getDate();
 
-    const totalAtividades = atividades.length;
+    const atividadesMes = await this.prisma.usuario_atividades.findMany({
+      where: {
+        id_usuario: idBigInt,
+        data_realizacao: {
+          gte: inicioMes,
+          lte: fimMes,
+        },
+      },
+    }).catch(() => []);
+
+    const diasConcluidos = [...new Set(
+      atividadesMes
+        .map((a: any) => (a.data_realizacao ? new Date(a.data_realizacao).getDate() : null))
+        .filter((d): d is number => d !== null)
+    )].sort((a, b) => a - b);
+
+    const diasPassados: number[] = [];
+    for (let dia = 1; dia < diaHoje; dia++) {
+      if (!diasConcluidos.includes(dia)) {
+        diasPassados.push(dia);
+      }
+    }
+
+    // Monta a matriz de semanas (Domingo a Sábado) para o mês atual
+    const primeiroDiaSemana = inicioMes.getDay(); // 0 = Dom, 6 = Sáb
+    const weeks: Array<Array<number | ''>> = [];
+    let semanaAtual: Array<number | ''> = Array(primeiroDiaSemana).fill('');
+
+    for (let dia = 1; dia <= totalDiasMes; dia++) {
+      semanaAtual.push(dia);
+      if (semanaAtual.length === 7) {
+        weeks.push(semanaAtual);
+        semanaAtual = [];
+      }
+    }
+
+    if (semanaAtual.length > 0) {
+      while (semanaAtual.length < 7) {
+        semanaAtual.push('');
+      }
+      weeks.push(semanaAtual);
+    }
+
     const ofensivaAtual = await this.calcularOfensivaAtual(usuarioId);
+    const concluiuHoje = diasConcluidos.includes(diaHoje);
 
     return {
+      ano: anoAtual,
+      mes: mesAtual + 1,
+      diaHoje,
+      concluiuHoje,
       ofensivaAtual,
-      totalAtividades,
+      totalAtividades: atividadesMes.length,
       diasConcluidos,
+      diasPassados,
+      weeks,
     };
   }
 
