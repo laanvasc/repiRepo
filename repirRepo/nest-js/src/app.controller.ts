@@ -105,4 +105,17 @@ async obterProgressoSemanal(@Param('id') id: string) {
   async criarUsuario(@Body() body: { nome: string; email: string; senha?: string }) {
     return this.appService.criarUsuario(body.nome, body.email, body.senha);
   }
+
+  @Get('atividades/:idAtividade/relacionadas')
+async getAtividadesRelacionadas(@Param('idAtividade') idAtividade: string) {
+  return this.appService.getAtividadesRelacionadas(Number(idAtividade));
+}
+
+@Get('atividades/categoria/:categoria')
+async getAtividadesPorCategoria(@Param('categoria') categoria: string) {
+  return this.appService.getAtividadesPorCategoria(Number(categoria));
+}
+
+
+
 }

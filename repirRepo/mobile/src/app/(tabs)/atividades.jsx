@@ -1,7 +1,7 @@
 import { Ionicons } from '@expo/vector-icons';
 import { Image } from 'expo-image';
-import { router } from 'expo-router';
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { router, useFocusEffect } from 'expo-router';
+import { useCallback, useMemo, useState } from 'react';
 import { ActivityIndicator, Alert, Platform, RefreshControl, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
@@ -132,42 +132,47 @@ export default function AtividadesScreen() {
     return MAPA_DIAS_SEMANA[idxDia] || MAPA_DIAS_SEMANA[3];
   }, []);
 
-  const carregarAtividadesFrequentes = async () => {
+  const refetchAtividades = useCallback(async ({ isPullToRefresh = false } = {}) => {
     if (!usuarioId) {
+      setAtividades([]);
       setLoading(false);
+      setRefreshing(false);
       return;
     }
 
     try {
-      setLoading(true);
+      if (isPullToRefresh) {
+        setRefreshing(true);
+      } else {
+        setLoading(true);
+      }
+
       const response = await api.get(`/usuarios/${usuarioId}/atividades-frequentes`);
       setAtividades(Array.isArray(response.data) ? response.data : []);
     } catch (err) {
       console.error('Erro ao carregar atividades frequentes:', err.response?.data || err.message);
     } finally {
-      setTimeout(() => {
-        setLoading(false);
-      }, 500);
-    }
-  };
-
-  useEffect(() => {
-    carregarAtividadesFrequentes();
-  }, [usuarioId]);
-
-  const onRefresh = useCallback(async () => {
-    setRefreshing(true);
-    await carregarAtividadesFrequentes();
-    setTimeout(() => {
+      setLoading(false);
       setRefreshing(false);
-    }, 800);
+    }
   }, [usuarioId]);
+
+  useFocusEffect(
+    useCallback(() => {
+      refetchAtividades({ isPullToRefresh: false });
+    }, [refetchAtividades])
+  );
+
+  const onRefresh = useCallback(() => {
+    refetchAtividades({ isPullToRefresh: true });
+  }, [refetchAtividades]);
 
   const handleFinalizarAtividades = async () => {
     if (!usuarioId) return;
 
     try {
       await api.post(`/usuarios/${usuarioId}/atualizar-ofensiva`);
+      await refetchAtividades({ isPullToRefresh: true });
       Alert.alert('Sucesso', 'Atividades diárias registadas com sucesso!');
     } catch (err) {
       console.error('Erro ao finalizar atividades:', err);
@@ -259,14 +264,14 @@ export default function AtividadesScreen() {
             )}
           </ThemedView>
 
-          <TouchableOpacity
+          {/* <TouchableOpacity
             style={styles.addBottomButton}
             onPress={() => router.push('/cadastrarAtividade')}
             activeOpacity={0.8}
           >
             <Ionicons name="add-circle-outline" size={20} color="#FF5733" />
             <Text style={styles.addBottomButtonText}>Adicionar nova atividade</Text>
-          </TouchableOpacity>
+          </TouchableOpacity> */}
 
           {/* <ThemedView style={styles.buttonContainer}>
             <Button titulo="Finalizar atividades diárias" onPress={handleFinalizarAtividades} />

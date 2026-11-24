@@ -5,9 +5,6 @@ import { PrismaService } from './prisma/prisma.service.js';
 export class AppService {
   constructor(private readonly prisma: PrismaService) {}
 
-  /**
-   * Helper privado para garantir que o ID é válido antes de converter para BigInt
-   */
   private validarId(id: any): bigint {
     const num = Number(id);
     if (!id || isNaN(num) || num <= 0) {
@@ -16,10 +13,6 @@ export class AppService {
     return BigInt(num);
   }
 
-  /**
-   * Valida as credenciais do usuário para login.
-   * Procura o usuário pelo e-mail e verifica a senha (passwordHash).
-   */
   async validarLogin(email: string, senha?: string) {
     const usuario = await this.prisma.usuario.findFirst({
       where: { email },
@@ -29,7 +22,6 @@ export class AppService {
       throw new NotFoundException('Usuário não encontrado com este e-mail.');
     }
 
-    // Se houver validação de senha cadastrada no banco
     if (usuario.passwordHash && senha && usuario.passwordHash !== senha) {
       throw new UnauthorizedException('Senha incorreta.');
     }
@@ -74,28 +66,25 @@ export class AppService {
       throw new NotFoundException(`Usuário com ID ${id} não encontrado.`);
     }
 
-    // Busca apenas as conquistas vinculadas ao usuário logado
     const usuarioConquistas = await this.prisma.usuario_conquistas.findMany({
       where: { id_usuario: idBigInt },
       include: {
-        conquista: true, // Traz os detalhes da conquista associada
+        conquista: true,
       },
     });
 
-    // Mapeia para retornar um formato limpo diretamente com os dados da conquista e o progresso
     return usuarioConquistas.map((uc) => ({
       ...uc.conquista,
       progresso_atual: uc.progresso_atual,
       data_desbloqueio: uc.data_desbloqueio,
-      id_conquista: Number(uc.conquista.id_conquista), // Converte BigInt para Number se necessário no front
+      id_conquista: Number(uc.conquista.id_conquista),
     }));
   }
 
- async getNotificacoesUsuario(id: number) {
+  async getNotificacoesUsuario(id: number) {
     const idBigInt = this.validarId(id);
     const notificacoes: Array<{ id: string; titulo: string; tempo: string; lida: boolean }> = [];
 
-    // 1. Verificar ofensiva atual (utilizando 'id' em vez de 'id_usuario')
     const usuario = await this.prisma.usuario.findUnique({
       where: { id: idBigInt },
       select: { ofensivaAtual: true, nome: true },
@@ -110,7 +99,6 @@ export class AppService {
       });
     }
 
-    // 2. Buscar atividades realizadas hoje (utilizando 'atividades' no plural e 'id_historico')
     const inicioHoje = new Date();
     inicioHoje.setHours(0, 0, 0, 0);
 
@@ -133,7 +121,6 @@ export class AppService {
       });
     });
 
-    // Se a lista estiver vazia, retorna uma notificação de boas-vindas
     if (notificacoes.length === 0) {
       notificacoes.push({
         id: 'welcome-1',
@@ -146,10 +133,9 @@ export class AppService {
     return notificacoes;
   }
 
-async getProximaAtividade(id: number) {
+  async getProximaAtividade(id: number) {
     const idBigInt = this.validarId(id);
 
-    // 1. Buscar atividades frequentes do utilizador incluindo a relação 'atividade' (singular)
     const atividadesFrequentes = await this.prisma.atividade_frequente.findMany({
       where: { id_usuario: Number(idBigInt) },
       include: { atividade: true },
@@ -159,11 +145,9 @@ async getProximaAtividade(id: number) {
       return { status: 'vazio', mensagem: 'Nenhuma atividade frequente cadastrada' };
     }
 
-    // 2. Descobrir o dia da semana atual (0 = Domingo, 1 = Segunda, etc.)
     const hoje = new Date();
-    const diaSemana = hoje.getDay(); // 0 a 6
-    
-    // Mapeamento seguro e tipado para evitar erros de indexação de string no TS
+    const diaSemana = hoje.getDay();
+
     const verificarDiaHoje = (item: any): boolean => {
       switch (diaSemana) {
         case 0: return item.repete_dom === true;
@@ -177,14 +161,12 @@ async getProximaAtividade(id: number) {
       }
     };
 
-    // Filtrar apenas as atividades agendadas para hoje
     const agendadasHoje = atividadesFrequentes.filter(verificarDiaHoje);
 
     if (agendadasHoje.length === 0) {
       return { status: 'sem_atividades_hoje', mensagem: 'Nenhuma atividade para hoje' };
     }
 
-    // 3. Buscar atividades já realizadas hoje pelo utilizador (desde a meia-noite)
     const inicioHoje = new Date();
     inicioHoje.setHours(0, 0, 0, 0);
 
@@ -198,18 +180,15 @@ async getProximaAtividade(id: number) {
 
     const idsRealizadasHoje = realizadasHoje.map((r) => Number(r.id_atividade));
 
-    // 4. Filtrar as que ainda falta fazer
     const pendentes = agendadasHoje.filter((item) => {
       const idAtividadeMestre = Number(item.id_atividade);
       return !idsRealizadasHoje.includes(idAtividadeMestre);
     });
 
-    // Se todas foram concluídas!
     if (pendentes.length === 0) {
       return { status: 'todas_concluidas', nome: 'Todas as atividades concluídas!' };
     }
 
-    // 5. Encontrar a próxima com base no horário
     const minutosAtuais = hoje.getHours() * 60 + hoje.getMinutes();
 
     const comMinutos = pendentes.map((item) => {
@@ -226,7 +205,6 @@ async getProximaAtividade(id: number) {
       };
     });
 
-    // Ordenar pelas mais próximas
     comMinutos.sort((a, b) => a.totalMinutos - b.totalMinutos);
 
     const proxima = comMinutos.find((i) => i.totalMinutos >= minutosAtuais) || comMinutos[0];
@@ -237,7 +215,8 @@ async getProximaAtividade(id: number) {
       horario: proxima.horario,
     };
   }
-async getDestaquesSemanais(id: number) {
+
+  async getDestaquesSemanais(id: number) {
     const idBigInt = this.validarId(id);
 
     const usuario = await this.prisma.usuario.findUnique({
@@ -248,13 +227,11 @@ async getDestaquesSemanais(id: number) {
       throw new NotFoundException(`Usuário com ID ${id} não encontrado.`);
     }
 
-    // 1. Calcula o início da semana atual (Domingo à 00:00:00)
     const hoje = new Date();
     const inicioSemana = new Date(hoje);
     inicioSemana.setDate(hoje.getDate() - hoje.getDay());
     inicioSemana.setHours(0, 0, 0, 0);
 
-    // 2. Busca as atividades realizadas pelo utilizador apenas nesta semana
     const atividadesSemana = await this.prisma.usuario_atividades.findMany({
       where: {
         id_usuario: idBigInt,
@@ -267,7 +244,6 @@ async getDestaquesSemanais(id: number) {
       },
     });
 
-    // 3. Conta o total de treinos e soma o XP ganho apenas nesta semana
     const totalTreinosSemana = atividadesSemana.length;
     const totalXpSemana = atividadesSemana.reduce(
       (acumulador, item) => acumulador + Number(item.xp_ganho ?? 0),
@@ -281,7 +257,7 @@ async getDestaquesSemanais(id: number) {
     };
   }
 
- async getUsuarioXp(id: number) {
+  async getUsuarioXp(id: number) {
     const idBigInt = this.validarId(id);
     const usuario = await this.prisma.usuario.findUnique({
       where: { id: idBigInt },
@@ -315,7 +291,7 @@ async getDestaquesSemanais(id: number) {
     }
 
     const dataUltima = usuario.dataUltimaAtividade ? new Date(usuario.dataUltimaAtividade) : null;
-    
+
     const hoje = new Date();
     hoje.setHours(0, 0, 0, 0);
 
@@ -371,64 +347,161 @@ async getDestaquesSemanais(id: number) {
     };
   }
 
-// Adiciona este método para listar as atividades do catálogo/mestre
   async getAtividadesCatalogo() {
     return this.prisma.atividades.findMany({
       orderBy: { nome_atividade: 'asc' },
     });
   }
 
-
-  
-  // Ajusta o criar para receber o id_atividade diretamente
-  async criarAtividadeFrequente(usuarioId: number, dto: {
-    id_atividade: number;
-    repete_seg: boolean;
-    repete_ter: boolean;
-    repete_qua: boolean;
-    repete_qui: boolean;
-    repete_sex: boolean;
-    repete_sab: boolean;
-    repete_dom: boolean;
-    horario?: string;
-  }) {
+  // Aceita tanto o JSON consolidado { id_usuario, atividades_frequentes: [...] } quanto um item direto
+  async criarAtividadeFrequente(
+    usuarioId: number,
+    dto:
+      | {
+          id_usuario?: number;
+          atividades_frequentes: Array<{
+            id_usuario?: number;
+            id_atividade: number;
+            repete_seg?: boolean;
+            repete_ter?: boolean;
+            repete_qua?: boolean;
+            repete_qui?: boolean;
+            repete_sex?: boolean;
+            repete_sab?: boolean;
+            repete_dom?: boolean;
+            horario?: string | null;
+          }>;
+        }
+      | {
+          id_atividade: number;
+          repete_seg?: boolean;
+          repete_ter?: boolean;
+          repete_qua?: boolean;
+          repete_qui?: boolean;
+          repete_sex?: boolean;
+          repete_sab?: boolean;
+          repete_dom?: boolean;
+          horario?: string | null;
+        }
+  ) {
     const idBigInt = this.validarId(usuarioId);
+    const idUsuarioNum = Number(idBigInt);
 
-    // Converte a string de horário ("HH:mm") para o formato de Data do Prisma (@db.Time)
-    let horarioDate = null;
-    if (dto.horario) {
-      horarioDate = new Date(`1970-01-01T${dto.horario}:00Z`);
+    const usuarioExiste = await this.prisma.usuario.findUnique({
+      where: { id: idBigInt },
+      select: { id: true },
+    });
+
+    if (!usuarioExiste) {
+      throw new NotFoundException(`Usuário com ID ${usuarioId} não encontrado.`);
     }
 
-    // Cria diretamente a relação na tabela 'atividade_frequente' usando o id_atividade escolhido
-    const novaFrequencia = await this.prisma.atividade_frequente.create({
-      data: {
-        id_usuario: Number(idBigInt),
-        id_atividade: Number(dto.id_atividade),
-        repete_seg: dto.repete_seg,
-        repete_ter: dto.repete_ter,
-        repete_qua: dto.repete_qua,
-        repete_qui: dto.repete_qui,
-        repete_sex: dto.repete_sex,
-        repete_sab: dto.repete_sab,
-        repete_dom: dto.repete_dom,
+    const listaItens = Array.isArray((dto as any)?.atividades_frequentes)
+      ? (dto as any).atividades_frequentes
+      : [dto];
+
+    if (!listaItens.length) {
+      throw new BadRequestException('Nenhuma atividade frequente enviada.');
+    }
+
+    const dadosParaInserir = listaItens.map((item: any) => {
+      const idAtivNum = Number(item?.id_atividade);
+      if (!item?.id_atividade || isNaN(idAtivNum) || idAtivNum <= 0) {
+        throw new BadRequestException(`ID de atividade inválido: ${item?.id_atividade}`);
+      }
+
+      let horarioDate: Date | null = null;
+      if (item.horario) {
+        horarioDate = new Date(`1970-01-01T${item.horario}:00Z`);
+      }
+
+      return {
+        id_usuario: idUsuarioNum,
+        id_atividade: BigInt(idAtivNum),
+        repete_seg: Boolean(item.repete_seg),
+        repete_ter: Boolean(item.repete_ter),
+        repete_qua: Boolean(item.repete_qua),
+        repete_qui: Boolean(item.repete_qui),
+        repete_sex: Boolean(item.repete_sex),
+        repete_sab: Boolean(item.repete_sab),
+        repete_dom: Boolean(item.repete_dom),
         horario: horarioDate,
+      };
+    });
+
+    const resultado = await this.prisma.atividade_frequente.createMany({
+      data: dadosParaInserir,
+    });
+
+    return {
+      mensagem: 'Atividades frequentes associadas com sucesso!',
+      quantidade: resultado.count,
+    };
+  }
+
+  async getAtividadesPorCategoria(categoria: number) {
+    const catNum = Number(categoria);
+    if (!categoria || isNaN(catNum) || catNum <= 0) {
+      throw new BadRequestException(`Categoria inválida: ${categoria}`);
+    }
+
+    const atividades = await this.prisma.atividades.findMany({
+      where: { categoria_atividade: catNum },
+      orderBy: { id_atividade: 'asc' },
+    });
+
+    return atividades.map((item) => ({
+      ...item,
+      id_atividade: Number(item.id_atividade),
+    }));
+  }
+
+  async getAtividadesRelacionadas(idAtividade: number) {
+    const numId = Number(idAtividade);
+    if (!idAtividade || isNaN(numId) || numId <= 0) {
+      throw new BadRequestException(`ID de atividade inválido: ${idAtividade}`);
+    }
+
+    const atividadeBase = await this.prisma.atividades.findUnique({
+      where: { id_atividade: BigInt(numId) },
+      select: {
+        id_atividade: true,
+        nome_atividade: true,
+        categoria_atividade: true,
+      },
+    });
+
+    if (!atividadeBase) {
+      throw new NotFoundException(`Atividade com ID ${idAtividade} não encontrada.`);
+    }
+
+    const relacionadas = await this.prisma.atividades.findMany({
+      where: {
+        categoria_atividade: atividadeBase.categoria_atividade,
+      },
+      orderBy: {
+        id_atividade: 'asc',
       },
     });
 
     return {
-      mensagem: 'Atividade frequente associada com sucesso!',
-      atividade: novaFrequencia,
+      categoria_atividade: atividadeBase.categoria_atividade,
+      atividadeBase: {
+        ...atividadeBase,
+        id_atividade: Number(atividadeBase.id_atividade),
+      },
+      atividades: relacionadas.map((item) => ({
+        ...item,
+        id_atividade: Number(item.id_atividade),
+      })),
     };
   }
-  // ==========================================
-  // NOVOS MÉTODOS PARA O MENSAL CARD & OFENSIVA
-  // ==========================================
-async getDadosMensais(usuarioId: number) {
+
+  async getDadosMensais(usuarioId: number) {
     const idBigInt = this.validarId(usuarioId);
     const agora = new Date();
     const anoAtual = agora.getFullYear();
-    const mesAtual = agora.getMonth(); // 0-indexed (0 = Jan, 10 = Nov)
+    const mesAtual = agora.getMonth();
     const diaHoje = agora.getDate();
 
     const inicioMes = new Date(anoAtual, mesAtual, 1, 0, 0, 0, 0);
@@ -458,8 +531,7 @@ async getDadosMensais(usuarioId: number) {
       }
     }
 
-    // Monta a matriz de semanas (Domingo a Sábado) para o mês atual
-    const primeiroDiaSemana = inicioMes.getDay(); // 0 = Dom, 6 = Sáb
+    const primeiroDiaSemana = inicioMes.getDay();
     const weeks: Array<Array<number | ''>> = [];
     let semanaAtual: Array<number | ''> = Array(primeiroDiaSemana).fill('');
 
@@ -494,7 +566,7 @@ async getDadosMensais(usuarioId: number) {
     };
   }
 
-async registrarRealizacaoAtividade(usuarioId: number, dto: {
+  async registrarRealizacaoAtividade(usuarioId: number, dto: {
     id_atividade: number;
     duracao_minutos: number;
     intensidade: string;
@@ -503,11 +575,10 @@ async registrarRealizacaoAtividade(usuarioId: number, dto: {
   }) {
     const idBigInt = this.validarId(usuarioId);
 
-    // Cálculo dinâmico do XP com base na intensidade e duração do treino (se o dto.xp_ganho não for explicitamente enviado)
     let xpGanho = dto.xp_ganho;
     if (!xpGanho) {
-      let multiplicadorIntensidade = 10; // Base por minuto para intensidade moderada
-      
+      let multiplicadorIntensidade = 10;
+
       const intensidadeLower = (dto.intensidade || 'moderada').toLowerCase();
       if (intensidadeLower.includes('leve') || intensidadeLower.includes('baixa')) {
         multiplicadorIntensidade = 7;
@@ -515,16 +586,14 @@ async registrarRealizacaoAtividade(usuarioId: number, dto: {
         multiplicadorIntensidade = 15;
       }
 
-      // XP = Duração em minutos * multiplicador (com um mínimo garantido de 30 XP)
       const minutos = Number(dto.duracao_minutos) || 15;
       xpGanho = Math.max(30, minutos * multiplicadorIntensidade);
     }
 
-    // 1. Criar o registo histórico na tabela 'usuario_atividades'
     const historico = await this.prisma.usuario_atividades.create({
       data: {
-        id_usuario: Number(idBigInt),
-        id_atividade: Number(dto.id_atividade),
+        id_usuario: idBigInt,
+        id_atividade: BigInt(dto.id_atividade),
         xp_ganho: xpGanho,
         duracao_minutos: dto.duracao_minutos,
         intensidade: dto.intensidade,
@@ -532,14 +601,12 @@ async registrarRealizacaoAtividade(usuarioId: number, dto: {
       },
     });
 
-    // 2. Buscar o XP atual do utilizador e somar o novo valor
     const usuario = await this.prisma.usuario.findUnique({
       where: { id: idBigInt },
     });
 
     const novoXp = (usuario?.xp ?? 0) + xpGanho;
 
-    // 3. Atualizar o XP total e a data da última atividade no perfil do utilizador
     await this.prisma.usuario.update({
       where: { id: idBigInt },
       data: {
@@ -548,7 +615,6 @@ async registrarRealizacaoAtividade(usuarioId: number, dto: {
       },
     });
 
-    // 4. Atualizar automaticamente a ofensiva (streak)
     await this.atualizarOfensiva(Number(idBigInt));
 
     return {
@@ -559,17 +625,15 @@ async registrarRealizacaoAtividade(usuarioId: number, dto: {
     };
   }
 
-async getAtividadesFrequentesUsuario(id: number) {
+  async getAtividadesFrequentesUsuario(id: number) {
     const idBigInt = this.validarId(id);
 
-    // 1. Define o intervalo exato do dia atual (00:00:00 até 23:59:59)
     const inicioDoDia = new Date();
     inicioDoDia.setHours(0, 0, 0, 0);
 
     const fimDoDia = new Date();
     fimDoDia.setHours(23, 59, 59, 999);
 
-    // 2. Busca as atividades frequentes configuradas pelo utilizador
     const frequencias = await this.prisma.atividade_frequente.findMany({
       where: { id_usuario: Number(idBigInt) },
       include: {
@@ -577,7 +641,6 @@ async getAtividadesFrequentesUsuario(id: number) {
       },
     }).catch(() => []);
 
-    // 3. Busca as atividades já realizadas HOJE na tabela de histórico
     const realizadasHoje = await this.prisma.usuario_atividades.findMany({
       where: {
         id_usuario: idBigInt,
@@ -591,12 +654,10 @@ async getAtividadesFrequentesUsuario(id: number) {
       },
     }).catch(() => []);
 
-    // Cria um Set com os IDs das atividades concluídas hoje para consulta rápida
     const idsRealizadosHoje = new Set(
       realizadasHoje.map((r: any) => Number(r.id_atividade))
     );
 
-    // 4. Retorna os dados já com a flag 'realizada_hoje'
     return frequencias.map((f: any) => {
       const idAtividadeNum = f.id_atividade ? Number(f.id_atividade) : null;
 
@@ -621,26 +682,23 @@ async getAtividadesFrequentesUsuario(id: number) {
   async calcularMetasProgresso(usuarioId: number) {
     const idBigInt = this.validarId(usuarioId);
 
-    // Datas de referência
     const agora = new Date();
-    
-    // Início e Fim do Dia Atual (00:00:00 até 23:59:59)
+
     const inicioDoDia = new Date(agora);
     inicioDoDia.setHours(0, 0, 0, 0);
     const fimDoDia = new Date(agora);
     fimDoDia.setHours(23, 59, 59, 999);
 
-    // Início da Semana (Considerando segunda-feira como início)
-    const diaSemana = agora.getDay(); // 0 = Domingo, 1 = Segunda, ...
+    const diaSemana = agora.getDay();
     const diffParaSegunda = agora.getDate() - diaSemana + (diaSemana === 0 ? -6 : 1);
-    const inicioDaSemana = new Date(agora.setDate(diffParaSegunda));
+    const inicioDaSemana = new Date(agora);
+    inicioDaSemana.setDate(diffParaSegunda);
     inicioDaSemana.setHours(0, 0, 0, 0);
 
     const fimDaSemana = new Date(inicioDaSemana);
     fimDaSemana.setDate(inicioDaSemana.getDate() + 6);
     fimDaSemana.setHours(23, 59, 59, 999);
 
-    // 1. Contar atividades realizadas HOJE
     const totalHoje = await this.prisma.usuario_atividades.count({
       where: {
         id_usuario: idBigInt,
@@ -651,7 +709,6 @@ async getAtividadesFrequentesUsuario(id: number) {
       },
     });
 
-    // 2. Contar atividades realizadas NESTA SEMANA
     const totalSemana = await this.prisma.usuario_atividades.count({
       where: {
         id_usuario: idBigInt,
@@ -662,9 +719,8 @@ async getAtividadesFrequentesUsuario(id: number) {
       },
     });
 
-    // Podes definir metas padrão ou buscar de uma tabela de metas do utilizador
-    const metaDiaria = 3;   // Exemplo: meta de 3 atividades por dia
-    const metaSemanal = 15; // Exemplo: meta de 15 atividades por semana
+    const metaDiaria = 3;
+    const metaSemanal = 15;
 
     return {
       progresso_diario: {
@@ -689,7 +745,6 @@ async getAtividadesFrequentesUsuario(id: number) {
 
     if (!atividades || atividades.length === 0) return 0;
 
-    // Usamos um type guard (t is number) para o TypeScript saber que o array final é apenas de números
     const diasUnicos = ([...new Set(atividades.map((a: any) => {
       if (!a.data_realizacao) return null;
       const d = new Date(a.data_realizacao);
@@ -702,7 +757,7 @@ async getAtividadesFrequentesUsuario(id: number) {
     let ofensiva = 0;
     const hoje = new Date();
     hoje.setHours(0, 0, 0, 0);
-    
+
     const ontem = new Date(hoje);
     ontem.setDate(hoje.getDate() - 1);
 
@@ -730,66 +785,64 @@ async getAtividadesFrequentesUsuario(id: number) {
     return ofensiva;
   }
 
-async calcularProgressoSemanal(usuarioId: number) {
-  const idBigInt = this.validarId(usuarioId);
+  async calcularProgressoSemanal(usuarioId: number) {
+    const idBigInt = this.validarId(usuarioId);
 
-  // Apenas validamos se o utilizador existe na base de dados
-  const usuario = await this.prisma.usuario.findUnique({
-    where: { id: idBigInt },
-  });
+    const usuario = await this.prisma.usuario.findUnique({
+      where: { id: idBigInt },
+    });
 
-  if (!usuario) {
-    throw new Error('Utilizador não encontrado');
-  }
+    if (!usuario) {
+      throw new Error('Utilizador não encontrado');
+    }
 
-  const metaDiariaPadrao = 3; // Regra padrão da aplicação para a meta diária
+    const metaDiariaPadrao = 3;
 
-  const agora = new Date();
-  const diaSemana = agora.getDay(); // 0 = Domingo, 1 = Segunda...
-  const diffParaSegunda = agora.getDate() - diaSemana + (diaSemana === 0 ? -6 : 1);
-  
-  const inicioSemana = new Date(agora);
-  inicioSemana.setDate(diffParaSegunda);
-  inicioSemana.setHours(0, 0, 0, 0);
+    const agora = new Date();
+    const diaSemana = agora.getDay();
+    const diffParaSegunda = agora.getDate() - diaSemana + (diaSemana === 0 ? -6 : 1);
 
-  const diasDaSemana = ['S', 'T', 'Q', 'Q', 'S', 'S', 'D'];
-  const resultadoDias = [];
+    const inicioSemana = new Date(agora);
+    inicioSemana.setDate(diffParaSegunda);
+    inicioSemana.setHours(0, 0, 0, 0);
 
-  for (let i = 0; i < 7; i++) {
-    const diaAtual = new Date(inicioSemana);
-    diaAtual.setDate(inicioSemana.getDate() + i);
+    const diasDaSemana = ['S', 'T', 'Q', 'Q', 'S', 'S', 'D'];
+    const resultadoDias = [];
 
-    const proximoDia = new Date(diaAtual);
-    proximoDia.setDate(diaAtual.getDate() + 1);
+    for (let i = 0; i < 7; i++) {
+      const diaAtual = new Date(inicioSemana);
+      diaAtual.setDate(inicioSemana.getDate() + i);
 
-    const realizadas = await this.prisma.usuario_atividades.count({
-      where: {
-        id_usuario: idBigInt,
-        data_realizacao: {
-          gte: diaAtual,
-          lt: proximoDia,
+      const proximoDia = new Date(diaAtual);
+      proximoDia.setDate(diaAtual.getDate() + 1);
+
+      const realizadas = await this.prisma.usuario_atividades.count({
+        where: {
+          id_usuario: idBigInt,
+          data_realizacao: {
+            gte: diaAtual,
+            lt: proximoDia,
+          },
         },
-      },
-    });
+      });
 
-    const hoje = new Date();
-    const éHoje = diaAtual.toDateString() === hoje.toDateString();
+      const hoje = new Date();
+      const éHoje = diaAtual.toDateString() === hoje.toDateString();
 
-    resultadoDias.push({
-      dia: diasDaSemana[i],
-      atividadesFeitas: realizadas,
-      metaDiaria: metaDiariaPadrao,
-      atual: éHoje,
-    });
+      resultadoDias.push({
+        dia: diasDaSemana[i],
+        atividadesFeitas: realizadas,
+        metaDiaria: metaDiariaPadrao,
+        atual: éHoje,
+      });
+    }
+
+    return resultadoDias;
   }
-
-  return resultadoDias;
-}
 
   async criarUsuario(nome: string, email: string, senha?: string) {
     const emailNormalizado = email.trim().toLowerCase();
 
-    // Verifica se já existe um utilizador com este e-mail
     const usuarioExistente = await this.prisma.usuario.findFirst({
       where: { email: emailNormalizado },
     });
@@ -798,12 +851,11 @@ async calcularProgressoSemanal(usuarioId: number) {
       throw new BadRequestException('Este e-mail já está registado.');
     }
 
-    // Cria o novo utilizador no Supabase via Prisma
     const novoUsuario = await this.prisma.usuario.create({
       data: {
         nome: nome.trim(),
         email: emailNormalizado,
-        passwordHash: senha || '', // Guarda a senha (ou hash dependendo da tua lógica)
+        passwordHash: senha || '',
         xp: 0,
         ofensivaAtual: 0,
         recordeMaximo: 0,
@@ -819,5 +871,4 @@ async calcularProgressoSemanal(usuarioId: number) {
       },
     };
   }
-
 }
