@@ -3,6 +3,7 @@ import { router, useLocalSearchParams } from 'expo-router';
 import { useEffect, useMemo, useState } from 'react';
 import {
   ActivityIndicator,
+  Alert,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -13,10 +14,18 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { MaxContentWidth } from '@/constants/theme';
+import { useAuth } from '@/context/AuthContext';
 import { api } from '@/services/api';
 
 const PALETA_CARDS = ['#F7A8F5', '#C6F200', '#FF5252', '#F45828', '#C6F200'];
 const DIAS_SEMANA = ['Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb', 'Dom'];
+const CHAVES_USUARIO_PRIORITARIAS = [
+  'usuarioId',
+  'id_usuario',
+  'usuario',
+  'user',
+  'dadosUsuario',
+];
 
 function normalizarTexto(texto) {
   return String(texto || '')
@@ -27,10 +36,146 @@ function normalizarTexto(texto) {
     .trim();
 }
 
+function extrairIdDeValor(valor) {
+  if (!valor) return null;
+
+  if (typeof valor === 'number' && Number.isFinite(valor) && valor > 0) {
+    return String(valor);
+  }
+
+  if (typeof valor === 'string') {
+    const limpo = valor.trim();
+    if (!limpo) return null;
+    if (/^\d+$/.test(limpo)) return limpo;
+    try {
+      return extrairIdDeValor(JSON.parse(limpo));
+    } catch {
+      return null;
+    }
+  }
+
+  if (typeof valor === 'object') {
+    const direto =
+      valor?.usuario?.id ??
+      valor?.usuario?.id_usuario ??
+      valor?.user?.id ??
+      valor?.user?.id_usuario ??
+      valor?.id ??
+      valor?.id_usuario ??
+      valor?.idUsuario ??
+      null;
+
+    if (direto !== null && direto !== undefined && String(direto).trim() !== '') {
+      return String(direto);
+    }
+  }
+
+  return null;
+}
+
+async function lerEntradasStorage(AsyncStorage, keys) {
+  if (typeof AsyncStorage?.multiGet === 'function') {
+    return AsyncStorage.multiGet(keys);
+  }
+  if (typeof AsyncStorage?.getMany === 'function') {
+    const manyResult = await AsyncStorage.getMany(keys);
+    if (Array.isArray(manyResult)) return manyResult;
+    if (manyResult && typeof manyResult === 'object') {
+      return Object.entries(manyResult);
+    }
+  }
+  const pares = [];
+  for (const key of keys) {
+    const val = await AsyncStorage.getItem(key);
+    pares.push([key, val]);
+  }
+  return pares;
+}
+
+async function buscarIdPrioritarioNoStorage(AsyncStorage) {
+  for (const chave of CHAVES_USUARIO_PRIORITARIAS) {
+    try {
+      const valor = await AsyncStorage.getItem(chave);
+      const id = extrairIdDeValor(valor);
+      if (id) return id;
+    } catch {
+      // ignora chave inexistente ou mal formatada
+    }
+  }
+
+  if (!AsyncStorage?.getAllKeys) return null;
+
+  const keys = await AsyncStorage.getAllKeys();
+  if (!keys || keys.length === 0) return null;
+
+  const keysFiltradas = keys.filter(
+    (k) =>
+      !CHAVES_USUARIO_PRIORITARIAS.includes(k) &&
+      !/atividade|esporte|catalogo|cache|expo/i.test(String(k))
+  );
+
+  if (keysFiltradas.length === 0) return null;
+
+  const entries = await lerEntradasStorage(AsyncStorage, keysFiltradas);
+  for (const [, rawValue] of entries) {
+    const idEncontrado = extrairIdDeValor(rawValue);
+    if (idEncontrado) return idEncontrado;
+  }
+
+  return null;
+}
+
 export default function EscolherDiaAtividadesScreen() {
   const params = useLocalSearchParams();
+  const authContext = useAuth?.() || {};
 
-  // Recupera o que já estava selecionado anteriormente em diasEsportes
+  const usuarioObj =
+    authContext?.usuario ??
+    authContext?.user ??
+    authContext?.dadosUsuario ??
+    null;
+
+  const [usuarioIdStorage, setUsuarioIdStorage] = useState(null);
+
+  useEffect(() => {
+    let ativo = true;
+
+    async function carregarUsuarioStorage() {
+      try {
+        const AsyncStorageModule = await import('@react-native-async-storage/async-storage');
+        const AsyncStorage = AsyncStorageModule?.default || AsyncStorageModule;
+        const idEncontrado = await buscarIdPrioritarioNoStorage(AsyncStorage);
+        if (idEncontrado && ativo) {
+          setUsuarioIdStorage(idEncontrado);
+        }
+      } catch (err) {
+        console.log('Erro ao ler AsyncStorage:', err?.message || err);
+      }
+    }
+
+    carregarUsuarioStorage();
+
+    return () => {
+      ativo = false;
+    };
+  }, []);
+
+  const usuarioIdParam = useMemo(() => {
+    return (
+      extrairIdDeValor(params?.usuarioId) ??
+      extrairIdDeValor(params?.id_usuario) ??
+      extrairIdDeValor(params?.idUsuario) ??
+      extrairIdDeValor(params?.usuario) ??
+      null
+    );
+  }, [params?.usuarioId, params?.id_usuario, params?.idUsuario, params?.usuario]);
+
+  const usuarioId =
+    usuarioIdParam ??
+    extrairIdDeValor(usuarioObj) ??
+    usuarioIdStorage ??
+    null;
+
   const selecaoInicial = useMemo(() => {
     try {
       const bruto = Array.isArray(params?.diasPorAtividade)
@@ -47,6 +192,23 @@ export default function EscolherDiaAtividadesScreen() {
     }
     return {};
   }, [params?.diasPorAtividade]);
+
+  const atividadesPreCarregadas = useMemo(() => {
+    try {
+      const bruto = Array.isArray(params?.atividadesCategoria)
+        ? params.atividadesCategoria[0]
+        : params?.atividadesCategoria;
+      if (bruto) {
+        const parsed = JSON.parse(String(bruto));
+        if (Array.isArray(parsed)) {
+          return parsed;
+        }
+      }
+    } catch {
+      // ignora erro de parse
+    }
+    return null;
+  }, [params?.atividadesCategoria]);
 
   const idAtividadeNumerico = useMemo(() => {
     const brutoId = Array.isArray(params?.idAtividade)
@@ -83,9 +245,11 @@ export default function EscolherDiaAtividadesScreen() {
   }, [params?.idAtividade, params?.esporte]);
 
   const categoriaInformada = useMemo(() => {
-    const brutoCat = Array.isArray(params?.categoria)
-      ? params.categoria[0]
-      : params?.categoria;
+    const brutoCat = Array.isArray(params?.categoriaId)
+      ? params.categoriaId[0]
+      : Array.isArray(params?.categoria)
+        ? params.categoria[0]
+        : (params?.categoriaId ?? params?.categoria);
 
     if (brutoCat !== undefined && brutoCat !== null && String(brutoCat).trim() !== '') {
       const num = Number(brutoCat);
@@ -94,8 +258,24 @@ export default function EscolherDiaAtividadesScreen() {
       }
     }
 
+    try {
+      const brutoEsporte = Array.isArray(params?.esporte)
+        ? params.esporte[0]
+        : params?.esporte;
+      if (brutoEsporte) {
+        const parsed = JSON.parse(String(brutoEsporte));
+        const cat = parsed?.categoriaId ?? parsed?.categoria_atividade;
+        const num = Number(cat);
+        if (!Number.isNaN(num) && num > 0) {
+          return num;
+        }
+      }
+    } catch {
+      // ignora
+    }
+
     return null;
-  }, [params?.categoria]);
+  }, [params?.categoriaId, params?.categoria, params?.esporte]);
 
   const termoBuscaEsporte = useMemo(() => {
     const brutoId = Array.isArray(params?.idAtividade)
@@ -118,11 +298,13 @@ export default function EscolherDiaAtividadesScreen() {
     return String(brutoId || '');
   }, [params?.idAtividade, params?.esporte]);
 
-  const [atividadesRelacionadas, setAtividadesRelacionadas] = useState([]);
-  const [carregando, setCarregando] = useState(true);
+  const [atividadesRelacionadas, setAtividadesRelacionadas] = useState(
+    atividadesPreCarregadas || []
+  );
+  const [carregando, setCarregando] = useState(!atividadesPreCarregadas);
+  const [salvando, setSalvando] = useState(false);
   const [erro, setErro] = useState('');
 
-  // Estrutura: { [id_atividade]: ['Seg', 'Qua'] }
   const [diasPorAtividade, setDiasPorAtividade] = useState(selecaoInicial);
 
   useEffect(() => {
@@ -130,6 +312,13 @@ export default function EscolherDiaAtividadesScreen() {
   }, [selecaoInicial]);
 
   useEffect(() => {
+    if (atividadesPreCarregadas && atividadesPreCarregadas.length > 0) {
+      setAtividadesRelacionadas(atividadesPreCarregadas);
+      setCarregando(false);
+      setErro('');
+      return;
+    }
+
     let ativo = true;
 
     async function carregarAtividadesRelacionadas() {
@@ -137,24 +326,6 @@ export default function EscolherDiaAtividadesScreen() {
       setErro('');
 
       try {
-        if (idAtividadeNumerico) {
-          try {
-            const res = await api.get(`/usuarios/atividades/${idAtividadeNumerico}/relacionadas`);
-            const dados = res?.data;
-            const lista = Array.isArray(dados?.atividades)
-              ? dados.atividades
-              : Array.isArray(dados)
-                ? dados
-                : [];
-
-            if (!ativo) return;
-            setAtividadesRelacionadas(lista);
-            return;
-          } catch {
-            // fallback para o catálogo
-          }
-        }
-
         if (categoriaInformada) {
           try {
             const resCat = await api.get(`/usuarios/atividades/categoria/${categoriaInformada}`);
@@ -167,6 +338,24 @@ export default function EscolherDiaAtividadesScreen() {
 
             if (!ativo) return;
             setAtividadesRelacionadas(listaCat);
+            return;
+          } catch {
+            // fallback para relacionadas / catálogo
+          }
+        }
+
+        if (idAtividadeNumerico) {
+          try {
+            const res = await api.get(`/usuarios/atividades/${idAtividadeNumerico}/relacionadas`);
+            const dados = res?.data;
+            const lista = Array.isArray(dados?.atividades)
+              ? dados.atividades
+              : Array.isArray(dados)
+                ? dados
+                : [];
+
+            if (!ativo) return;
+            setAtividadesRelacionadas(lista);
             return;
           } catch {
             // fallback para o catálogo
@@ -228,7 +417,7 @@ export default function EscolherDiaAtividadesScreen() {
     return () => {
       ativo = false;
     };
-  }, [idAtividadeNumerico, categoriaInformada, termoBuscaEsporte]);
+  }, [atividadesPreCarregadas, idAtividadeNumerico, categoriaInformada, termoBuscaEsporte]);
 
   function toggleDiaAtividade(idAtividade, dia) {
     setDiasPorAtividade((prev) => {
@@ -247,19 +436,110 @@ export default function EscolherDiaAtividadesScreen() {
     });
   }
 
-  function handleContinuar() {
-    // Retorna para diasEsportes preservando os esportes e a seleção acumulada
-    router.replace({
-      pathname: '/(auth)/diasEsportes',
-      params: {
-        esportes: Array.isArray(params?.esportes) ? params.esportes[0] : (params?.esportes || '[]'),
-        diasPorAtividade: JSON.stringify(diasPorAtividade),
-      },
+  async function handleContinuar() {
+    console.log('Debug usuarioId em escolherDiaAtividades:', {
+      usuarioId,
+      usuarioIdParam,
+      usuarioObj,
+      usuarioIdStorage,
     });
+
+    const idsDestaTela = new Set(
+      atividadesRelacionadas.map((a) => String(a.id_atividade ?? a.id))
+    );
+
+    const entradasDestaTela = Object.entries(diasPorAtividade).filter(
+      ([idAtiv, dias]) =>
+        idsDestaTela.has(String(idAtiv)) && Array.isArray(dias) && dias.length > 0
+    );
+
+    if (entradasDestaTela.length === 0) {
+      Alert.alert(
+        'Atenção',
+        'Selecione pelo menos um dia da semana para uma atividade antes de continuar.'
+      );
+      return;
+    }
+
+    if (!usuarioId) {
+      Alert.alert('Erro', 'Usuário não identificado para salvar as atividades.');
+      return;
+    }
+
+    console.log('ORIGEM DO ID:', {
+  usuarioIdParam,
+  authUsuario: usuarioObj,
+  usuarioIdStorage,
+  paramsCompletos: params,
+});
+
+    const idUsuarioNum = Number(usuarioId);
+
+    const jsonConsolidado = {
+      id_usuario: idUsuarioNum,
+      atividades_frequentes: entradasDestaTela.map(([idAtiv, dias]) => ({
+        id_usuario: idUsuarioNum,
+        id_atividade: Number(idAtiv),
+        repete_seg: dias.includes('Seg'),
+        repete_ter: dias.includes('Ter'),
+        repete_qua: dias.includes('Qua'),
+        repete_qui: dias.includes('Qui'),
+        repete_sex: dias.includes('Sex'),
+        repete_sab: dias.includes('Sáb'),
+        repete_dom: dias.includes('Dom'),
+      })),
+    };
+
+    console.log(
+      'Enviando atividades de escolherDiaAtividades:',
+      JSON.stringify(jsonConsolidado, null, 2)
+    );
+
+    setSalvando(true);
+    try {
+      const resposta = await api.post(
+        `/usuarios/${idUsuarioNum}/atividades-frequentes`,
+        jsonConsolidado
+      );
+
+      console.log('Salvo com sucesso no banco:', resposta?.data);
+
+      router.replace({
+        pathname: '/(auth)/diasEsportes',
+        params: {
+          esportes: Array.isArray(params?.esportes)
+            ? params.esportes[0]
+            : (params?.esportes || '[]'),
+          diasPorAtividade: JSON.stringify(diasPorAtividade),
+          usuarioId: String(idUsuarioNum),
+        },
+      });
+    } catch (err) {
+      console.log(
+        'Erro ao salvar atividades frequentes:',
+        err?.response?.status,
+        err?.response?.data || err?.message
+      );
+      Alert.alert(
+        'Erro ao salvar',
+        'Não foi possível salvar suas atividades no banco de dados. Tente novamente.'
+      );
+    } finally {
+      setSalvando(false);
+    }
   }
 
   function handlePular() {
-    router.replace('/(tabs)');
+    router.replace({
+      pathname: '/(auth)/diasEsportes',
+      params: {
+        esportes: Array.isArray(params?.esportes)
+          ? params.esportes[0]
+          : (params?.esportes || '[]'),
+        diasPorAtividade: JSON.stringify(diasPorAtividade),
+        ...(usuarioId ? { usuarioId: String(usuarioId) } : {}),
+      },
+    });
   }
 
   return (
@@ -315,12 +595,6 @@ export default function EscolherDiaAtividadesScreen() {
                     key={String(idAtiv)}
                     style={[styles.activityCard, { backgroundColor: bgCard }]}
                   >
-                    <Image
-                      source={require('@/components/assets/mascote/pose2-mascot2.svg')}
-                      style={styles.cardMascot}
-                      contentFit="contain"
-                    />
-
                     <View style={styles.cardRight}>
                       <Text style={styles.activityTitle} numberOfLines={1}>
                         {atividade.nome_atividade || atividade.nome}
@@ -353,11 +627,14 @@ export default function EscolherDiaAtividadesScreen() {
           {/* Ações */}
           <View style={styles.actions}>
             <TouchableOpacity
-              style={styles.primaryButton}
+              style={[styles.primaryButton, salvando && styles.primaryButtonDisabled]}
               onPress={handleContinuar}
+              disabled={salvando}
               activeOpacity={0.85}
             >
-              <Text style={styles.primaryButtonText}>Continuar</Text>
+              <Text style={styles.primaryButtonText}>
+                {salvando ? 'Salvando...' : 'Continuar'}
+              </Text>
             </TouchableOpacity>
 
             <Pressable onPress={handlePular} style={styles.skipButton}>
@@ -450,13 +727,8 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     borderRadius: 22,
-    paddingVertical: 12,
-    paddingHorizontal: 12,
-    gap: 10,
-  },
-  cardMascot: {
-    width: 72,
-    height: 72,
+    paddingVertical: 14,
+    paddingHorizontal: 14,
   },
   cardRight: {
     flex: 1,
@@ -504,6 +776,9 @@ const styles = StyleSheet.create({
     borderRadius: 999,
     alignItems: 'center',
     justifyContent: 'center',
+  },
+  primaryButtonDisabled: {
+    opacity: 0.6,
   },
   primaryButtonText: {
     color: '#FFFFFF',

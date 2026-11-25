@@ -17,15 +17,58 @@ import { MaxContentWidth } from '@/constants/theme';
 import { useAuth } from '@/context/AuthContext';
 import { api } from '@/services/api';
 
+const MASCOTE_FALLBACK = require('@/components/assets/mascote/pose2-mascot2.svg');
+
+// Mapeia cada esporte para o número exato de `categoria_atividade` no banco
 const CATALOGO_CORES = {
-  judo: { nome: 'Judô', bg: '#C6F200' },
-  musculacao: { nome: 'Musculação', bg: '#FFA16C' },
-  corrida: { nome: 'Corrida', bg: '#F7A8F5' },
-  yoga: { nome: 'Yoga', bg: '#C6F200' },
-  'muay-thai': { nome: 'Muay Thai', bg: '#FF5252' },
-  natacao: { nome: 'Natação', bg: '#FFA16C' },
-  'jiu-jitsu': { nome: 'Jiu-Jitsu', bg: '#F7A8F5' },
-  boxe: { nome: 'Boxe', bg: '#FF5252' },
+  judo: {
+    id: 'judo',
+    categoriaId: 7,
+    nome: 'Judô',
+    bg: '#C6F200',
+    imagem: require('@/components/assets/mascote/pose-mascote-judo.svg'),
+    escala: 1,
+  },
+  corrida: {
+    id: 'corrida',
+    categoriaId: 2,
+    nome: 'Corrida',
+    bg: '#F7A8F5',
+    imagem: require('@/components/assets/mascote/pose-mascote-corrida.svg'),
+    escala: 1,
+  },
+  yoga: {
+    id: 'yoga',
+    categoriaId: 10,
+    nome: 'Yoga',
+    bg: '#C6F200',
+    imagem: require('@/components/assets/mascote/pose-mascote-yoga.svg'),
+    escala: 1,
+  },
+  'muay-thai': {
+    id: 'muay-thai',
+    categoriaId: 8,
+    nome: 'Muay Thai',
+    bg: '#FF5252',
+    imagem: require('@/components/assets/mascote/pose-mascote-muay.svg'),
+    escala: 1,
+  },
+  natacao: {
+    id: 'natacao',
+    categoriaId: 4,
+    nome: 'Natação',
+    bg: '#FFA16C',
+    imagem: require('@/components/assets/mascote/pose-mascote-natacao.svg'),
+    escala: 1,
+  },
+  'jiu-jitsu': {
+    id: 'jiu-jitsu',
+    categoriaId: 7,
+    nome: 'Jiu-Jitsu',
+    bg: '#F7A8F5',
+    imagem: MASCOTE_FALLBACK,
+    escala: 1.06,
+  },
 };
 
 function extrairIdDeValor(valor) {
@@ -70,6 +113,25 @@ function extrairIdDeValor(valor) {
   return null;
 }
 
+async function lerEntradasStorage(AsyncStorage, keys) {
+  if (typeof AsyncStorage?.multiGet === 'function') {
+    return AsyncStorage.multiGet(keys);
+  }
+  if (typeof AsyncStorage?.getMany === 'function') {
+    const manyResult = await AsyncStorage.getMany(keys);
+    if (Array.isArray(manyResult)) return manyResult;
+    if (manyResult && typeof manyResult === 'object') {
+      return Object.entries(manyResult);
+    }
+  }
+  const pares = [];
+  for (const key of keys) {
+    const val = await AsyncStorage.getItem(key);
+    pares.push([key, val]);
+  }
+  return pares;
+}
+
 export default function DiasEsportesScreen() {
   const params = useLocalSearchParams();
   const authContext = useAuth?.() || {};
@@ -90,12 +152,12 @@ export default function DiasEsportesScreen() {
         const AsyncStorageModule = await import('@react-native-async-storage/async-storage');
         const AsyncStorage = AsyncStorageModule?.default || AsyncStorageModule;
 
-        if (!AsyncStorage?.getAllKeys || !AsyncStorage?.multiGet) return;
+        if (!AsyncStorage?.getAllKeys) return;
 
         const keys = await AsyncStorage.getAllKeys();
         if (!keys || keys.length === 0) return;
 
-        const entries = await AsyncStorage.multiGet(keys);
+        const entries = await lerEntradasStorage(AsyncStorage, keys);
         for (const [, rawValue] of entries) {
           const idEncontrado = extrairIdDeValor(rawValue);
           if (idEncontrado && ativo) {
@@ -126,8 +188,8 @@ export default function DiasEsportesScreen() {
   }, [params?.usuarioId, params?.id_usuario, params?.idUsuario, params?.usuario]);
 
   const usuarioId =
-    extrairIdDeValor(usuarioObj) ??
     usuarioIdParam ??
+    extrairIdDeValor(usuarioObj) ??
     usuarioIdStorage ??
     null;
 
@@ -140,18 +202,40 @@ export default function DiasEsportesScreen() {
       if (brutoEsportes) {
         const parsed = JSON.parse(String(brutoEsportes));
         if (Array.isArray(parsed)) {
-          return parsed.map((item) => {
-            if (typeof item === 'object' && item !== null) {
-              const base = CATALOGO_CORES[item.id] || {};
-              return {
-                id: item.id,
-                nome: item.nome || base.nome || item.id,
-                bg: base.bg || item.bg || '#FFA16C',
+          return parsed
+            .filter((item) => {
+              const id = typeof item === 'object' && item !== null ? item.id : item;
+              return id !== 'musculacao' && id !== 'boxe';
+            })
+            .map((item) => {
+              if (typeof item === 'object' && item !== null) {
+                const base = CATALOGO_CORES[item.id] || {};
+                const categoriaId = Number(item.categoriaId ?? base.categoriaId ?? 1);
+                return {
+                  id: item.id,
+                  categoriaId,
+                  nome: item.nome || base.nome || item.id,
+                  bg: base.bg || item.bg || '#FFA16C',
+                  imagem: base.imagem || MASCOTE_FALLBACK,
+                  escala: item.escala ?? base.escala ?? 1,
+                };
+              }
+              const base = CATALOGO_CORES[item] || {
+                categoriaId: 1,
+                nome: item,
+                bg: '#FFA16C',
+                imagem: MASCOTE_FALLBACK,
+                escala: 1,
               };
-            }
-            const base = CATALOGO_CORES[item] || { nome: item, bg: '#FFA16C' };
-            return { id: item, nome: base.nome, bg: base.bg };
-          });
+              return {
+                id: item,
+                categoriaId: base.categoriaId,
+                nome: base.nome,
+                bg: base.bg,
+                imagem: base.imagem || MASCOTE_FALLBACK,
+                escala: base.escala ?? 1,
+              };
+            });
         }
       }
 
@@ -162,10 +246,25 @@ export default function DiasEsportesScreen() {
       if (brutoIds) {
         const ids = JSON.parse(String(brutoIds));
         if (Array.isArray(ids)) {
-          return ids.map((id) => {
-            const base = CATALOGO_CORES[id] || { nome: id, bg: '#FFA16C' };
-            return { id, nome: base.nome, bg: base.bg };
-          });
+          return ids
+            .filter((id) => id !== 'musculacao' && id !== 'boxe')
+            .map((id) => {
+              const base = CATALOGO_CORES[id] || {
+                categoriaId: 1,
+                nome: id,
+                bg: '#FFA16C',
+                imagem: MASCOTE_FALLBACK,
+                escala: 1,
+              };
+              return {
+                id,
+                categoriaId: base.categoriaId,
+                nome: base.nome,
+                bg: base.bg,
+                imagem: base.imagem || MASCOTE_FALLBACK,
+                escala: base.escala ?? 1,
+              };
+            });
         }
       }
 
@@ -194,6 +293,7 @@ export default function DiasEsportesScreen() {
 
   const [diasPorAtividade, setDiasPorAtividade] = useState(diasAcumuladosParam);
   const [salvando, setSalvando] = useState(false);
+  const [buscandoCategoriaId, setBuscandoCategoriaId] = useState(null);
 
   useEffect(() => {
     if (Object.keys(diasAcumuladosParam).length > 0) {
@@ -201,92 +301,143 @@ export default function DiasEsportesScreen() {
     }
   }, [diasAcumuladosParam]);
 
-  function irParaEscolherDiaAtividades(esporteFoco) {
+  async function sincronizarSessao(idNum) {
+    try {
+      const AsyncStorageModule = await import('@react-native-async-storage/async-storage');
+      const AsyncStorage = AsyncStorageModule?.default || AsyncStorageModule;
+
+      if (AsyncStorage?.setItem) {
+        await AsyncStorage.setItem('usuarioId', String(idNum));
+        const atualUsuario =
+          usuarioObj && typeof usuarioObj === 'object'
+            ? { ...usuarioObj, id: idNum }
+            : { id: idNum };
+        await AsyncStorage.setItem('usuario', JSON.stringify(atualUsuario));
+      }
+
+      if (typeof authContext?.setUsuario === 'function') {
+        authContext.setUsuario((prev) => ({ ...(prev || {}), id: idNum }));
+      } else if (typeof authContext?.atualizarUsuario === 'function') {
+        authContext.atualizarUsuario({ ...(usuarioObj || {}), id: idNum });
+      }
+    } catch {
+      // ignora falha auxiliar de sincronização
+    }
+  }
+
+  async function irParaEscolherDiaAtividades(esporteFoco) {
+    const categoriaIdNum = Number(esporteFoco?.categoriaId);
+    let atividadesDaCategoria = [];
+
+    setBuscandoCategoriaId(esporteFoco.id);
+    try {
+      const resposta = await api.get(
+        `/usuarios/atividades/categoria/${categoriaIdNum}`
+      );
+      atividadesDaCategoria = Array.isArray(resposta?.data)
+        ? resposta.data
+        : resposta?.data?.atividades || [];
+      console.log(`Atividades da categoria ${categoriaIdNum}:`, atividadesDaCategoria);
+    } catch (err) {
+      console.log(
+        `Erro ao buscar atividades da categoria ${categoriaIdNum}:`,
+        err?.response?.status,
+        err?.response?.data || err?.message
+      );
+    } finally {
+      setBuscandoCategoriaId(null);
+    }
+
+    const { imagem: _imagem, ...esporteSerializavel } = esporteFoco || {};
+    const esportesSerializaveis = esportesLista.map(({ imagem: _img, ...resto }) => resto);
+
     router.push({
       pathname: '/(auth)/escolherDiaAtividades',
       params: {
-        idAtividade: String(esporteFoco?.id_atividade ?? esporteFoco?.id ?? ''),
-        esporte: JSON.stringify(esporteFoco),
-        esportes: JSON.stringify(esportesLista),
+        categoriaId: String(categoriaIdNum),
+        idAtividade: String(
+          atividadesDaCategoria[0]?.id_atividade ??
+            esporteFoco?.id_atividade ??
+            ''
+        ),
+        esporte: JSON.stringify(esporteSerializavel),
+        esportes: JSON.stringify(esportesSerializaveis),
+        atividadesCategoria: JSON.stringify(atividadesDaCategoria),
         diasPorAtividade: JSON.stringify(diasPorAtividade),
         ...(usuarioId ? { usuarioId: String(usuarioId) } : {}),
       },
     });
   }
 
-  async function handleContinuar() {
-    console.log('Debug usuarioId:', {
-      usuarioId,
-      usuarioObj,
-      paramsUsuarioId: params?.usuarioId,
-      usuarioIdStorage,
-    });
+async function buscarIdPrioritarioNoStorage(AsyncStorage) {
+  const chavesDiretas = ['usuarioId', 'id_usuario', 'usuario', 'user', 'dadosUsuario'];
 
-    const entradasComDias = Object.entries(diasPorAtividade).filter(
-      ([, dias]) => Array.isArray(dias) && dias.length > 0
-    );
-
-    if (entradasComDias.length === 0) {
-      Alert.alert(
-        'Atenção',
-        'Selecione pelo menos uma atividade e os dias da semana antes de continuar.'
-      );
-      return;
-    }
-
-    if (!usuarioId) {
-      Alert.alert('Erro', 'Usuário não identificado para salvar a rotina.');
-      return;
-    }
-
-    const idUsuarioNum = Number(usuarioId);
-
-    const jsonConsolidado = {
-      id_usuario: idUsuarioNum,
-      atividades_frequentes: entradasComDias.map(([idAtiv, dias]) => ({
-        id_usuario: idUsuarioNum,
-        id_atividade: Number(idAtiv),
-        repete_seg: dias.includes('Seg'),
-        repete_ter: dias.includes('Ter'),
-        repete_qua: dias.includes('Qua'),
-        repete_qui: dias.includes('Qui'),
-        repete_sex: dias.includes('Sex'),
-        repete_sab: dias.includes('Sáb'),
-        repete_dom: dias.includes('Dom'),
-      })),
-    };
-
-    console.log(
-      'JSON consolidado enviado para atividade_frequente:',
-      JSON.stringify(jsonConsolidado, null, 2)
-    );
-
-    setSalvando(true);
+  for (const chave of chavesDiretas) {
     try {
-      const resposta = await api.post(
-        `/usuarios/${idUsuarioNum}/atividades-frequentes`,
-        jsonConsolidado
-      );
-
-      console.log('Salvo com sucesso no banco:', resposta?.data);
-
-      router.replace('/');
-    } catch (err) {
-      console.log(
-        'Erro ao salvar atividades frequentes:',
-        err?.response?.status,
-        err?.response?.data || err?.message
-      );
-      Alert.alert(
-        'Erro ao salvar',
-        'Não foi possível enviar sua rotina ao banco de dados. Tente novamente.'
-      );
-    } finally {
-      setSalvando(false);
+      const valor = await AsyncStorage.getItem(chave);
+      const id = extrairIdDeValor(valor);
+      if (id) return id;
+    } catch {
+      // ignora erro de leitura
     }
   }
 
-  function handlePular() {
+  if (!AsyncStorage?.getAllKeys) return null;
+
+  const keys = await AsyncStorage.getAllKeys();
+  if (!keys || keys.length === 0) return null;
+
+  const keysFiltradas = keys.filter(
+    (k) =>
+      !chavesDiretas.includes(k) &&
+      !/atividade|esporte|catalogo|cache|expo/i.test(String(k))
+  );
+
+  if (keysFiltradas.length === 0) return null;
+
+  const entries = await lerEntradasStorage(AsyncStorage, keysFiltradas);
+  for (const [, rawValue] of entries) {
+    const idEncontrado = extrairIdDeValor(rawValue);
+    if (idEncontrado) return idEncontrado;
+  }
+
+  return null;
+}
+
+async function handleContinuar() {
+  setSalvando(true);
+  try {
+    const idUsuarioNum = usuarioId ? Number(usuarioId) : null;
+    console.log('[diasEsportes] handleContinuar usuarioId:', {
+      usuarioId,
+      usuarioIdParam,
+      usuarioIdStorage,
+      idUsuarioNum,
+    });
+
+    if (idUsuarioNum && idUsuarioNum > 0) {
+      await sincronizarSessao(idUsuarioNum);
+      router.replace({
+        pathname: '/home',
+        params: { usuarioId: String(idUsuarioNum) },
+      });
+      return;
+    }
+
+    router.replace('/home');
+  } finally {
+    setSalvando(false);
+  }
+}
+  async function handlePular() {
+    if (usuarioId) {
+      await sincronizarSessao(Number(usuarioId));
+      router.replace({
+        pathname: '/',
+        params: { usuarioId: String(usuarioId) },
+      });
+      return;
+    }
     router.replace('/');
   }
 
@@ -305,7 +456,7 @@ export default function DiasEsportesScreen() {
               contentFit="cover"
             />
             <Image
-              source={require('@/components/assets/mascote/pose2-mascot2.svg')}
+              source={MASCOTE_FALLBACK}
               style={styles.mascotBanner}
               contentFit="contain"
             />
@@ -323,33 +474,44 @@ export default function DiasEsportesScreen() {
 
           {/* Lista estritamente com os esportes escolhidos */}
           <View style={styles.list}>
-            {esportesLista.map((esporte) => (
-              <TouchableOpacity
-                key={esporte.id}
-                style={[styles.accordionCard, { backgroundColor: esporte.bg }]}
-                onPress={() => irParaEscolherDiaAtividades(esporte)}
-                activeOpacity={0.85}
-              >
-                <View style={styles.accordionHeader}>
-                  <View style={styles.leftGroup}>
-                    <View style={styles.whiteCircle}>
-                      <Image
-                        source={require('@/components/assets/mascote/pose2-mascot2.svg')}
-                        style={styles.circleMascot}
-                        contentFit="contain"
-                      />
+            {esportesLista.map((esporte) => {
+              const carregandoEste = buscandoCategoriaId === esporte.id;
+              return (
+                <TouchableOpacity
+                  key={esporte.id}
+                  style={[styles.accordionCard, { backgroundColor: esporte.bg }]}
+                  onPress={() => irParaEscolherDiaAtividades(esporte)}
+                  disabled={carregandoEste}
+                  activeOpacity={0.85}
+                >
+                  <View style={styles.accordionHeader}>
+                    <View style={styles.leftGroup}>
+                      <View style={styles.whiteCircle}>
+                        <Image
+                          source={esporte.imagem || MASCOTE_FALLBACK}
+                          style={[
+                            styles.circleMascot,
+                            esporte.escala && esporte.escala !== 1
+                              ? { transform: [{ scale: esporte.escala }] }
+                              : null,
+                          ]}
+                          contentFit="contain"
+                        />
+                      </View>
+                      <Text style={styles.sportTitle}>
+                        {carregandoEste ? `${esporte.nome}...` : esporte.nome}
+                      </Text>
                     </View>
-                    <Text style={styles.sportTitle}>{esporte.nome}</Text>
-                  </View>
 
-                  <Ionicons
-                    name="chevron-forward"
-                    size={22}
-                    color="#FFFFFF"
-                  />
-                </View>
-              </TouchableOpacity>
-            ))}
+                    <Ionicons
+                      name="chevron-forward"
+                      size={22}
+                      color="#FFFFFF"
+                    />
+                  </View>
+                </TouchableOpacity>
+              );
+            })}
           </View>
 
           {/* Ações */}
@@ -466,8 +628,8 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
   },
   circleMascot: {
-    width: 36,
-    height: 36,
+    width: 34,
+    height: 34,
   },
   sportTitle: {
     fontSize: 17,

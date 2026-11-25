@@ -1,6 +1,6 @@
 import { Ionicons } from '@expo/vector-icons';
-import { router } from 'expo-router';
-import { useCallback, useEffect, useState } from 'react';
+import { router, useFocusEffect, useLocalSearchParams } from 'expo-router';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { ActivityIndicator, Platform, RefreshControl, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
@@ -14,18 +14,24 @@ import { WebBadge } from '@/components/web-badge';
 import Trofeu from '../../components/ui/Trofeu';
 
 import CardProgressoSemanal from '../../components/ui/CardProgressoSemana';
-import CardSemanaQuantAtividades from '@/components/ui/CardSemanaQuantAtividades';
 
 import { BottomTabInset, MaxContentWidth, Spacing } from '@/constants/theme';
 import { useAuth } from '@/context/AuthContext';
 import { api } from '@/services/api';
 
+function normalizarId(valor) {
+  if (valor === null || valor === undefined) return null;
+  const texto = String(valor).trim();
+  if (!texto || texto === 'undefined' || texto === 'null') return null;
+  return texto;
+}
+
 // Botão de Configurações customizado mantendo o design padrão
 function SettingsButton({ onPress }) {
   return (
-    <TouchableOpacity 
-      style={styles.settingsButton} 
-      onPress={onPress} 
+    <TouchableOpacity
+      style={styles.settingsButton}
+      onPress={onPress}
       activeOpacity={0.7}
       accessibilityRole="button"
       accessibilityLabel="Configurações"
@@ -36,55 +42,100 @@ function SettingsButton({ onPress }) {
 }
 
 export default function PerfilScreen() {
-  const { usuarioId } = useAuth();
+  const params = useLocalSearchParams();
+  const auth = useAuth?.() || {};
+
+  const [usuarioIdStorage, setUsuarioIdStorage] = useState(null);
   const [nomeUsuario, setNomeUsuario] = useState('Meu Perfil');
   const [progressoSemanal, setProgressoSemanal] = useState([]);
   const [conquistas, setConquistas] = useState([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
 
-  const carregarDadosPerfil = async () => {
-    if (!usuarioId) {
+  const carregarStorageId = useCallback(async () => {
+    try {
+      const AsyncStorageModule = await import('@react-native-async-storage/async-storage');
+      const AsyncStorage = AsyncStorageModule?.default || AsyncStorageModule;
+      const salvo = await AsyncStorage?.getItem?.('usuarioId');
+      const idLimpo = normalizarId(salvo);
+      if (idLimpo) {
+        setUsuarioIdStorage(idLimpo);
+      }
+      return idLimpo;
+    } catch (err) {
+      console.error('Erro ao ler usuarioId do AsyncStorage no Perfil:', err);
+      return null;
+    }
+  }, []);
+
+  useEffect(() => {
+    carregarStorageId();
+  }, [carregarStorageId, params?.usuarioId]);
+
+  const usuarioIdParam = useMemo(() => {
+    return (
+      normalizarId(params?.usuarioId) ??
+      normalizarId(params?.id_usuario) ??
+      normalizarId(params?.idUsuario) ??
+      null
+    );
+  }, [params?.usuarioId, params?.id_usuario, params?.idUsuario]);
+
+  const usuarioIdContexto = normalizarId(
+    auth?.usuarioId ?? auth?.usuario?.id ?? auth?.user?.id ?? null
+  );
+
+  const usuarioId = usuarioIdParam ?? usuarioIdStorage ?? usuarioIdContexto ?? null;
+
+  const carregarDadosPerfil = useCallback(async ({ isPullToRefresh = false } = {}) => {
+    const idAtual = usuarioId ?? (await carregarStorageId());
+
+    if (!idAtual) {
       setLoading(false);
+      setRefreshing(false);
       return;
     }
 
     try {
-      setLoading(true);
+      if (isPullToRefresh) {
+        setRefreshing(true);
+      } else {
+        setLoading(true);
+      }
+
       // 1. Carregar nome do utilizador
-      const resNome = await api.get(`/usuarios/${usuarioId}/nome`);
-      const nomeCompleto = typeof resNome.data === 'string' 
-        ? resNome.data 
+      const resNome = await api.get(`/usuarios/${idAtual}/nome`);
+      const nomeCompleto = typeof resNome.data === 'string'
+        ? resNome.data
         : (resNome.data?.nome || resNome.data?.nome_usuario || 'Meu Perfil');
       setNomeUsuario(nomeCompleto);
 
       // 2. Carregar progresso semanal real do utilizador
-      const resProgresso = await api.get(`/usuarios/${usuarioId}/progresso-semanal`);
-      setProgressoSemanal(resProgresso.data);
+      const resProgresso = await api.get(`/usuarios/${idAtual}/progresso-semanal`);
+      setProgressoSemanal(Array.isArray(resProgresso.data) ? resProgresso.data : []);
 
       // 3. Carregar conquistas / troféus reais do utilizador
-      const resConquistas = await api.get(`/usuarios/${usuarioId}/conquistas`);
-      setConquistas(resConquistas.data);
+      const resConquistas = await api.get(`/usuarios/${idAtual}/conquistas`);
+      setConquistas(Array.isArray(resConquistas.data) ? resConquistas.data : []);
     } catch (err) {
       console.error('Erro ao carregar dados do perfil:', err);
     } finally {
       setTimeout(() => {
         setLoading(false);
+        setRefreshing(false);
       }, 500);
     }
-  };
+  }, [usuarioId, carregarStorageId]);
 
-  useEffect(() => {
-    carregarDadosPerfil();
-  }, [usuarioId]);
+  useFocusEffect(
+    useCallback(() => {
+      carregarDadosPerfil({ isPullToRefresh: false });
+    }, [carregarDadosPerfil])
+  );
 
   const onRefresh = useCallback(async () => {
-    setRefreshing(true);
-    await carregarDadosPerfil();
-    setTimeout(() => {
-      setRefreshing(false);
-    }, 800);
-  }, [usuarioId]);
+    await carregarDadosPerfil({ isPullToRefresh: true });
+  }, [carregarDadosPerfil]);
 
   return (
     <ThemedView style={styles.container}>
@@ -116,11 +167,11 @@ export default function PerfilScreen() {
         >
           <ThemedView style={styles.cardsWrapper}>
             <CardXpTotal usuarioId={usuarioId} />
-            
+
             {/* Passando os dados dinâmicos da semana do utilizador logado */}
-            <CardProgressoSemanal 
+            <CardProgressoSemanal
               titulo="Progresso Semanal"
-              dias={progressoSemanal} 
+              dias={progressoSemanal}
             />
 
             <MensalCard usuarioId={usuarioId} />
@@ -132,12 +183,12 @@ export default function PerfilScreen() {
               {conquistas.length > 0 ? (
                 conquistas.map((item) => {
                   const isDesbloqueado = !!item.data_desbloqueio || (item.progresso_atual >= (item.meta || 100));
-                  
+
                   return (
-                    <Trofeu 
-                      key={item.id_conquista || item.id} 
-                      tituloTrofeu={item.titulo || item.nome_conquista} 
-                      disabled={!isDesbloqueado} 
+                    <Trofeu
+                      key={item.id_conquista || item.id}
+                      tituloTrofeu={item.titulo || item.nome_conquista}
+                      disabled={!isDesbloqueado}
                     />
                   );
                 })

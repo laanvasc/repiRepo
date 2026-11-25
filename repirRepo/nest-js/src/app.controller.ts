@@ -1,7 +1,7 @@
-import { Controller, Get, Param, Post, Body, ParseIntPipe } from '@nestjs/common';
+import { Controller, Get, Param, Post, Body } from '@nestjs/common';
 import { AppService } from './app.service.js';
 
-@Controller('usuarios') // <-- Prefixo da rota
+@Controller('usuarios')
 export class AppController {
   constructor(private readonly appService: AppService) {}
 
@@ -10,17 +10,17 @@ export class AppController {
     return 'Retorno do endpoint /usuarios';
   }
 
-  @Get(':id/nome') 
+  @Get(':id/nome')
   async getUsuarioNome(@Param('id') id: string) {
     return this.appService.getUsuarioNome(Number(id));
   }
 
-  @Get(':id/xp') // <-- Rota: /usuarios/:id/xp
+  @Get(':id/xp')
   async getUsuarioXp(@Param('id') id: string) {
     return this.appService.getUsuarioXp(Number(id));
   }
 
-@Get(':id/destaques-semanais')
+  @Get(':id/destaques-semanais')
   async getDestaquesSemanais(@Param('id') id: string) {
     return this.appService.getDestaquesSemanais(Number(id));
   }
@@ -30,7 +30,6 @@ export class AppController {
     return this.appService.getProximaAtividade(Number(id));
   }
 
-  // Rota para listar o catálogo de atividades disponíveis na tabela mestre
   @Get('catalogo-atividades')
   async getAtividadesCatalogo() {
     return this.appService.getAtividadesCatalogo();
@@ -55,12 +54,11 @@ export class AppController {
     return this.appService.registrarRealizacaoAtividade(Number(id), body);
   }
 
-@Get(':id/metas-progresso')
+  @Get(':id/metas-progresso')
   async obterMetasProgresso(@Param('id') id: string) {
     return this.appService.calcularMetasProgresso(Number(id));
   }
 
-  // Rota para buscar as atividades frequentes do utilizador
   @Get(':id/atividades-frequentes')
   async getAtividadesFrequentesUsuario(@Param('id') id: string) {
     return this.appService.getAtividadesFrequentesUsuario(Number(id));
@@ -74,13 +72,12 @@ export class AppController {
     return this.appService.criarAtividadeFrequente(Number(id), body);
   }
 
-@Get(':id/progresso-semanal')
-async obterProgressoSemanal(@Param('id') id: string) {
-  return this.appService.calcularProgressoSemanal(Number(id));
-}
+  @Get(':id/progresso-semanal')
+  async obterProgressoSemanal(@Param('id') id: string) {
+    return this.appService.calcularProgressoSemanal(Number(id));
+  }
 
-  // Rota para verificar e atualizar a ofensiva do usuário
-  @Get(':id/ofensiva') 
+  @Get(':id/ofensiva')
   async atualizarOfensiva(@Param('id') id: string) {
     return this.appService.atualizarOfensiva(Number(id));
   }
@@ -95,7 +92,6 @@ async obterProgressoSemanal(@Param('id') id: string) {
     return this.appService.validarLogin(body.email, body.senha);
   }
 
-  // Rota mensal corrigida para chamar diretamente o AppService
   @Get(':id/mensal')
   async getDadosMensais(@Param('id') id: string) {
     return this.appService.getDadosMensais(Number(id));
@@ -107,15 +103,12 @@ async obterProgressoSemanal(@Param('id') id: string) {
   }
 
   @Get('atividades/:idAtividade/relacionadas')
-async getAtividadesRelacionadas(@Param('idAtividade') idAtividade: string) {
-  return this.appService.getAtividadesRelacionadas(Number(idAtividade));
-}
+  async getAtividadesRelacionadas(@Param('idAtividade') idAtividade: string) {
+    return this.appService.getAtividadesRelacionadas(Number(idAtividade));
+  }
 
-@Get('atividades/categoria/:categoria')
-async getAtividadesPorCategoria(@Param('categoria') categoria: string) {
-  return this.appService.getAtividadesPorCategoria(Number(categoria));
-}
-
-
-
+  @Get('atividades/categoria/:categoria')
+  async getAtividadesPorCategoria(@Param('categoria') categoria: string) {
+    return this.appService.getAtividadesPorCategoria(Number(categoria));
+  }
 }

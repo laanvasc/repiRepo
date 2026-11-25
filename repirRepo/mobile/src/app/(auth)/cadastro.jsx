@@ -1,3 +1,4 @@
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Image } from 'expo-image';
 import { router } from 'expo-router';
 import { useRef, useState } from 'react';
@@ -9,6 +10,23 @@ import InputText from '@/components/ui/InputText';
 import { PasswordInput } from '@/components/ui/PasswordInput';
 import { useAuth } from '@/context/AuthContext';
 import { api } from '@/services/api';
+
+function extrairId(obj) {
+  if (!obj || typeof obj !== 'object') return null;
+  const valor =
+    obj?.usuario?.id_usuario ??
+    obj?.usuario?.id ??
+    obj?.user?.id_usuario ??
+    obj?.user?.id ??
+    obj?.id_usuario ??
+    obj?.id ??
+    null;
+
+  if (valor === null || valor === undefined || String(valor).trim() === '') {
+    return null;
+  }
+  return String(valor).trim();
+}
 
 export default function CadastroScreen() {
   const auth = useAuth();
@@ -24,28 +42,34 @@ export default function CadastroScreen() {
 
   async function autenticarAutomaticamente(dadosCadastro, emailCadastrado, senhaCadastrada) {
     let dadosSessao = dadosCadastro;
-
-    // Caso o POST /usuarios não retorne o ID ou token, realiza o login automático com as credenciais recém-criadas
-    let novoUsuarioId =
-      dadosSessao?.id_usuario ??
-      dadosSessao?.id ??
-      dadosSessao?.usuario?.id_usuario ??
-      dadosSessao?.usuario?.id;
+    let novoUsuarioId = extrairId(dadosSessao);
 
     if (!novoUsuarioId) {
-      const loginResponse = await api.post('/login', {
+      const loginResponse = await api.post('/usuarios/login', {
         email: emailCadastrado,
         senha: senhaCadastrada,
       });
       dadosSessao = loginResponse.data;
-      novoUsuarioId =
-        dadosSessao?.id_usuario ??
-        dadosSessao?.id ??
-        dadosSessao?.usuario?.id_usuario ??
-        dadosSessao?.usuario?.id;
+      novoUsuarioId = extrairId(dadosSessao);
     }
 
+    const usuarioObjeto = dadosSessao?.usuario ?? dadosSessao ?? null;
     const token = dadosSessao?.token ?? dadosSessao?.access_token ?? null;
+
+    if (novoUsuarioId) {
+      await AsyncStorage.setItem('usuarioId', String(novoUsuarioId));
+      const usuarioParaStorage =
+        usuarioObjeto && typeof usuarioObjeto === 'object'
+          ? {
+              ...usuarioObjeto,
+              id: Number.isNaN(Number(novoUsuarioId)) ? novoUsuarioId : Number(novoUsuarioId),
+            }
+          : {
+              id: Number.isNaN(Number(novoUsuarioId)) ? novoUsuarioId : Number(novoUsuarioId),
+              email: emailCadastrado,
+            };
+      await AsyncStorage.setItem('usuario', JSON.stringify(usuarioParaStorage));
+    }
 
     if (token && api?.defaults?.headers?.common) {
       api.defaults.headers.common.Authorization = `Bearer ${token}`;
@@ -55,13 +79,17 @@ export default function CadastroScreen() {
       await auth.signIn({
         usuarioId: novoUsuarioId,
         token,
-        usuario: dadosSessao?.usuario ?? dadosSessao,
+        usuario: usuarioObjeto,
       });
     } else if (typeof auth?.login === 'function') {
       await auth.login(novoUsuarioId, token);
+    } else if (typeof auth?.setUsuario === 'function' && usuarioObjeto) {
+      auth.setUsuario(usuarioObjeto);
     } else if (typeof auth?.setUsuarioId === 'function' && novoUsuarioId) {
       auth.setUsuarioId(novoUsuarioId);
     }
+
+    return novoUsuarioId;
   }
 
   async function handleRegister() {
@@ -89,15 +117,15 @@ export default function CadastroScreen() {
 
         console.log('Utilizador registado com sucesso:', response.data);
 
-        // Loga automaticamente na conta recém-criada
-        await autenticarAutomaticamente(response.data, normalizedEmail, password);
-
+        const novoUsuarioId = await autenticarAutomaticamente(response.data, normalizedEmail, password);
         const primeiroNome = normalizedName.split(' ')[0] || 'Atleta';
 
-        // Redireciona para a tela de cadastro concluído
         router.replace({
           pathname: '/cadastroConcluido',
-          params: { nome: primeiroNome },
+          params: {
+            nome: primeiroNome,
+            ...(novoUsuarioId ? { usuarioId: String(novoUsuarioId) } : {}),
+          },
         });
       } catch (err) {
         console.error('Erro no cadastro:', err.response?.data || err.message);
