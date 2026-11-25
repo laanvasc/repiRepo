@@ -1,6 +1,6 @@
 import { Ionicons } from '@expo/vector-icons';
 import { Image } from 'expo-image';
-import { router } from 'expo-router';
+import { router, useFocusEffect, useLocalSearchParams } from 'expo-router';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { ActivityIndicator, Alert, Platform, RefreshControl, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -28,146 +28,177 @@ const MAPA_DIAS_SEMANA = {
   6: { key: 'repete_sab', label: 'Sábado' },
 };
 
-// Função auxiliar para definir cores e metadados baseados na categoria_atividade ou no nome da atividade
-const getCategoryStyle = (item, index = 0) => {
-  const catId = item?.categoria_atividade ?? item?.categoria;
-  const numId = Number(catId);
-  const nomeAtividade = (item?.nome_atividade || '').toLowerCase();
-  const catTexto = String(catId || '').toLowerCase();
+function normalizarId(valor) {
+  if (valor === null || valor === undefined) return null;
+  const texto = String(valor).trim();
+  if (!texto || texto === 'undefined' || texto === 'null') return null;
+  return texto;
+}
 
-  // 1. Cardio (Coral / Vermelho vibrante)
-  if (
-    numId === 1 ||
-    catTexto.includes('cardio') ||
-    nomeAtividade.includes('corrida') ||
-    nomeAtividade.includes('caminhada') ||
-    nomeAtividade.includes('bike') ||
-    nomeAtividade.includes('ciclismo') ||
-    nomeAtividade.includes('esteira')
-  ) {
+// Define categoria exibida, cor de fundo, borda e texto de cada card
+const getCategoryStyle = (item, index = 0) => {
+  const numId = Number(
+    item?.categoria_atividade ?? item?.id_categoria ?? item?.categoria
+  );
+  const nome = String(item?.nome_atividade || item?.nome || '').toLowerCase();
+
+  if (numId === 2) {
     return {
       bg: '#FF5252',
       border: '#E03E3E',
       text: '#FFFFFF',
-      categoria: 'Cardio',
+      categoria: 'Corrida',
     };
   }
 
-  // 2. Força (Verde vibrante)
-  if (
-    numId === 2 ||
-    catTexto.includes('força') ||
-    catTexto.includes('forca') ||
-    nomeAtividade.includes('musculação') ||
-    nomeAtividade.includes('musculacao') ||
-    nomeAtividade.includes('treino') ||
-    nomeAtividade.includes('peso') ||
-    nomeAtividade.includes('quadriceps') ||
-    nomeAtividade.includes('supino') ||
-    nomeAtividade.includes('perna')
-  ) {
+  if (numId === 4) {
+    return {
+      bg: '#FFA16C',
+      border: '#E8854C',
+      text: '#FFFFFF',
+      categoria: 'Natação',
+    };
+  }
+
+  if (numId === 7) {
+    if (nome.includes('jiu')) {
+      return {
+        bg: '#F7A8F5',
+        border: '#D982D7',
+        text: '#FFFFFF',
+        categoria: 'Jiu-Jitsu',
+      };
+    }
     return {
       bg: '#22C55E',
       border: '#16A34A',
       text: '#FFFFFF',
-      categoria: 'Força',
+      categoria: 'Judô',
     };
   }
 
-  // 3. Flexibilidade (Azul vibrante)
-  if (
-    numId === 3 ||
-    catTexto.includes('flex') ||
-    nomeAtividade.includes('yoga') ||
-    nomeAtividade.includes('alongamento') ||
-    nomeAtividade.includes('pilates')
-  ) {
+  if (numId === 8) {
+    return {
+      bg: '#FF5252',
+      border: '#E03E3E',
+      text: '#FFFFFF',
+      categoria: 'Muay Thai',
+    };
+  }
+
+  if (numId === 10) {
     return {
       bg: '#3B82F6',
       border: '#2563EB',
       text: '#FFFFFF',
-      categoria: 'Flexibilidade',
+      categoria: 'Yoga',
     };
   }
 
-  // 4. Recuperação (Roxo / Púrpura vibrante)
-  if (
-    numId === 4 ||
-    catTexto.includes('recupera') ||
-    nomeAtividade.includes('descanso') ||
-    nomeAtividade.includes('massagem') ||
-    nomeAtividade.includes('sauna')
-  ) {
-    return {
-      bg: '#A855F7',
-      border: '#9333EA',
-      text: '#FFFFFF',
-      categoria: 'Recuperação',
-    };
-  }
-
-  // Fallback dinâmico alternando entre as cores das 4 categorias para visual diferenciado
-  const paletaFallback = [
-    { bg: '#FF5252', border: '#E03E3E', text: '#FFFFFF', categoria: 'Cardio' },
-    { bg: '#22C55E', border: '#16A34A', text: '#FFFFFF', categoria: 'Força' },
-    { bg: '#3B82F6', border: '#2563EB', text: '#FFFFFF', categoria: 'Flexibilidade' },
-    { bg: '#A855F7', border: '#9333EA', text: '#FFFFFF', categoria: 'Recuperação' },
+  const fallback = [
+    { bg: '#FF5252', border: '#E03E3E', text: '#FFFFFF', categoria: 'Corrida' },
+    { bg: '#FFA16C', border: '#E8854C', text: '#FFFFFF', categoria: 'Natação' },
+    { bg: '#22C55E', border: '#16A34A', text: '#FFFFFF', categoria: 'Judô' },
+    { bg: '#3B82F6', border: '#2563EB', text: '#FFFFFF', categoria: 'Yoga' },
   ];
 
-  const chosenIndex = typeof index === 'number' && !isNaN(index)
-    ? Math.abs(index) % paletaFallback.length
-    : (Math.abs(Number(item?.id_atividade_frequente || item?.id_atividade || 0)) % paletaFallback.length);
-
-  return paletaFallback[chosenIndex];
+  return fallback[Math.abs(Number(index) || 0) % fallback.length];
 };
 
 export default function AtividadesScreen() {
-  const { usuarioId } = useAuth();
+  const params = useLocalSearchParams();
+  const auth = useAuth?.() || {};
+
+  const [usuarioIdStorage, setUsuarioIdStorage] = useState(null);
   const [atividades, setAtividades] = useState([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+
+  const carregarStorageId = useCallback(async () => {
+    try {
+      const AsyncStorageModule = await import('@react-native-async-storage/async-storage');
+      const AsyncStorage = AsyncStorageModule?.default || AsyncStorageModule;
+      const salvo = await AsyncStorage?.getItem?.('usuarioId');
+      const idLimpo = normalizarId(salvo);
+      if (idLimpo) {
+        setUsuarioIdStorage(idLimpo);
+      }
+      return idLimpo;
+    } catch (err) {
+      console.error('Erro ao ler usuarioId do AsyncStorage em Atividades:', err);
+      return null;
+    }
+  }, []);
+
+  useEffect(() => {
+    carregarStorageId();
+  }, [carregarStorageId, params?.usuarioId]);
+
+  const usuarioIdParam = useMemo(() => {
+    return (
+      normalizarId(params?.usuarioId) ??
+      normalizarId(params?.id_usuario) ??
+      normalizarId(params?.idUsuario) ??
+      null
+    );
+  }, [params?.usuarioId, params?.id_usuario, params?.idUsuario]);
+
+  const usuarioIdContexto = normalizarId(
+    auth?.usuarioId ?? auth?.usuario?.id ?? auth?.user?.id ?? null
+  );
+
+  // Prioriza o ID da rota, depois o AsyncStorage e por último o AuthContext
+  const usuarioId = usuarioIdParam ?? usuarioIdStorage ?? usuarioIdContexto ?? null;
 
   const diaAtualInfo = useMemo(() => {
     const idxDia = new Date().getDay();
     return MAPA_DIAS_SEMANA[idxDia] || MAPA_DIAS_SEMANA[3];
   }, []);
 
-  const carregarAtividadesFrequentes = async () => {
-    if (!usuarioId) {
+  const refetchAtividades = useCallback(async ({ isPullToRefresh = false } = {}) => {
+    const idAtual = usuarioId ?? (await carregarStorageId());
+
+    if (!idAtual) {
+      setAtividades([]);
       setLoading(false);
+      setRefreshing(false);
       return;
     }
 
     try {
-      setLoading(true);
-      const response = await api.get(`/usuarios/${usuarioId}/atividades-frequentes`);
+      if (isPullToRefresh) {
+        setRefreshing(true);
+      } else {
+        setLoading(true);
+      }
+
+      const response = await api.get(`/usuarios/${idAtual}/atividades-frequentes`);
       setAtividades(Array.isArray(response.data) ? response.data : []);
     } catch (err) {
       console.error('Erro ao carregar atividades frequentes:', err.response?.data || err.message);
     } finally {
-      setTimeout(() => {
-        setLoading(false);
-      }, 500);
-    }
-  };
-
-  useEffect(() => {
-    carregarAtividadesFrequentes();
-  }, [usuarioId]);
-
-  const onRefresh = useCallback(async () => {
-    setRefreshing(true);
-    await carregarAtividadesFrequentes();
-    setTimeout(() => {
+      setLoading(false);
       setRefreshing(false);
-    }, 800);
-  }, [usuarioId]);
+    }
+  }, [usuarioId, carregarStorageId]);
+
+  useFocusEffect(
+    useCallback(() => {
+      refetchAtividades({ isPullToRefresh: false });
+    }, [refetchAtividades])
+  );
+
+  const onRefresh = useCallback(() => {
+    refetchAtividades({ isPullToRefresh: true });
+  }, [refetchAtividades]);
 
   const handleFinalizarAtividades = async () => {
-    if (!usuarioId) return;
+    const idAtual = usuarioId ?? (await carregarStorageId());
+    if (!idAtual) return;
 
     try {
-      await api.post(`/usuarios/${usuarioId}/atualizar-ofensiva`);
+      await api.post(`/usuarios/${idAtual}/atualizar-ofensiva`);
+      await refetchAtividades({ isPullToRefresh: true });
       Alert.alert('Sucesso', 'Atividades diárias registadas com sucesso!');
     } catch (err) {
       console.error('Erro ao finalizar atividades:', err);
@@ -259,14 +290,14 @@ export default function AtividadesScreen() {
             )}
           </ThemedView>
 
-          <TouchableOpacity
+          {/* <TouchableOpacity
             style={styles.addBottomButton}
             onPress={() => router.push('/cadastrarAtividade')}
             activeOpacity={0.8}
           >
             <Ionicons name="add-circle-outline" size={20} color="#FF5733" />
             <Text style={styles.addBottomButtonText}>Adicionar nova atividade</Text>
-          </TouchableOpacity>
+          </TouchableOpacity> */}
 
           {/* <ThemedView style={styles.buttonContainer}>
             <Button titulo="Finalizar atividades diárias" onPress={handleFinalizarAtividades} />

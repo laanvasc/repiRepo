@@ -1,5 +1,5 @@
-import { router } from 'expo-router';
-import { useCallback, useEffect, useState } from 'react';
+import { router, useFocusEffect, useLocalSearchParams } from 'expo-router';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { ActivityIndicator, Platform, RefreshControl, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
@@ -15,46 +15,98 @@ import { BottomTabInset, MaxContentWidth, Spacing } from '@/constants/theme';
 import { useAuth } from '@/context/AuthContext';
 import { api } from '@/services/api';
 
+function normalizarId(valor) {
+  if (valor === null || valor === undefined) return null;
+  const texto = String(valor).trim();
+  if (!texto || texto === 'undefined' || texto === 'null') return null;
+  return texto;
+}
+
 export default function MetaScreen() {
-  const { usuarioId } = useAuth();
+  const params = useLocalSearchParams();
+  const auth = useAuth?.() || {};
+
+  const [usuarioIdStorage, setUsuarioIdStorage] = useState(null);
   const [metas, setMetas] = useState(null);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
 
-  const carregarMetas = async () => {
-    if (!usuarioId) {
+  const carregarStorageId = useCallback(async () => {
+    try {
+      const AsyncStorageModule = await import('@react-native-async-storage/async-storage');
+      const AsyncStorage = AsyncStorageModule?.default || AsyncStorageModule;
+      const salvo = await AsyncStorage?.getItem?.('usuarioId');
+      const idLimpo = normalizarId(salvo);
+      if (idLimpo) {
+        setUsuarioIdStorage(idLimpo);
+      }
+      return idLimpo;
+    } catch (err) {
+      console.error('Erro ao ler usuarioId do AsyncStorage em Metas:', err);
+      return null;
+    }
+  }, []);
+
+  useEffect(() => {
+    carregarStorageId();
+  }, [carregarStorageId, params?.usuarioId]);
+
+  const usuarioIdParam = useMemo(() => {
+    return (
+      normalizarId(params?.usuarioId) ??
+      normalizarId(params?.id_usuario) ??
+      normalizarId(params?.idUsuario) ??
+      null
+    );
+  }, [params?.usuarioId, params?.id_usuario, params?.idUsuario]);
+
+  const usuarioIdContexto = normalizarId(
+    auth?.usuarioId ?? auth?.usuario?.id ?? auth?.user?.id ?? null
+  );
+
+  const usuarioId = usuarioIdParam ?? usuarioIdStorage ?? usuarioIdContexto ?? null;
+
+  const carregarMetas = useCallback(async ({ isPullToRefresh = false } = {}) => {
+    const idAtual = usuarioId ?? (await carregarStorageId());
+
+    if (!idAtual) {
       setLoading(false);
+      setRefreshing(false);
       return;
     }
 
     try {
-      setLoading(true);
-      const response = await api.get(`/usuarios/${usuarioId}/metas-progresso`);
+      if (isPullToRefresh) {
+        setRefreshing(true);
+      } else {
+        setLoading(true);
+      }
+
+      const response = await api.get(`/usuarios/${idAtual}/metas-progresso`);
       setMetas(response.data);
     } catch (err) {
       console.error('Erro ao carregar metas e progresso:', err.response?.data || err.message);
     } finally {
       setTimeout(() => {
         setLoading(false);
+        setRefreshing(false);
       }, 500);
     }
-  };
+  }, [usuarioId, carregarStorageId]);
 
-  useEffect(() => {
-    carregarMetas();
-  }, [usuarioId]);
+  useFocusEffect(
+    useCallback(() => {
+      carregarMetas({ isPullToRefresh: false });
+    }, [carregarMetas])
+  );
 
   const handleOpenNotificacoes = () => {
     router.navigate('/notificacoes');
   };
 
   const onRefresh = useCallback(async () => {
-    setRefreshing(true);
-    await carregarMetas();
-    setTimeout(() => {
-      setRefreshing(false);
-    }, 800);
-  }, [usuarioId]);
+    await carregarMetas({ isPullToRefresh: true });
+  }, [carregarMetas]);
 
   return (
     <ThemedView style={styles.container}>

@@ -8,6 +8,10 @@ export default function AuthLayout() {
       <Stack.Screen name="esqueci-senha" />
       <Stack.Screen name="sucesso" />
       <Stack.Screen name="erro" />
+      <Stack.Screen name="escolherEsportes" />
+      <Stack.Screen name="diasEsportes" />
+      <Stack.Screen name="atividadesPorEsporte" />
+      <Stack.Screen name="escolherDiaAtividades"/>
     </Stack>
   );
 }
