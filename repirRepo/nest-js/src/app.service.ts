@@ -679,7 +679,7 @@ export class AppService {
     });
   }
 
-  async calcularMetasProgresso(usuarioId: number) {
+async calcularMetasProgresso(usuarioId: number) {
     const idBigInt = this.validarId(usuarioId);
 
     const agora = new Date();
@@ -719,8 +719,36 @@ export class AppService {
       },
     });
 
-    const metaDiaria = 3;
-    const metaSemanal = 15;
+    const frequenciasUsuario = await this.prisma.atividade_frequente.findMany({
+      where: { id_usuario: Number(idBigInt) },
+    });
+
+    const agendadasHoje = frequenciasUsuario.filter((item: any) => {
+      switch (diaSemana) {
+        case 0:
+          return item.repete_dom === true;
+        case 1:
+          return item.repete_seg === true;
+        case 2:
+          return item.repete_ter === true;
+        case 3:
+          return item.repete_qua === true;
+        case 4:
+          return item.repete_qui === true;
+        case 5:
+          return item.repete_sex === true;
+        case 6:
+          return item.repete_sab === true;
+        default:
+          return false;
+      }
+    });
+
+    const totalCatalogo =
+      agendadasHoje.length > 0 ? agendadasHoje.length : await this.prisma.atividades.count();
+
+    const metaDiaria = totalCatalogo;
+    const metaSemanal = metaDiaria * 5;
 
     return {
       progresso_diario: {

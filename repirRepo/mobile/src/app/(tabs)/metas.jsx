@@ -2,11 +2,11 @@ import { router, useFocusEffect, useLocalSearchParams } from 'expo-router';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { ActivityIndicator, Platform, RefreshControl, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 import HeaderAreaView from '@/components/header-area-view';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
-import CardMetasCompletas from '@/components/ui/CardMetasCompletas';
 import MetaCard from '@/components/ui/MetaCard';
 import { NotificationButton } from '@/components/ui/NotificationButton';
 import { WebBadge } from '@/components/web-badge';
@@ -22,34 +22,31 @@ function normalizarId(valor) {
   return texto;
 }
 
+function formatarTempoRestanteDia(agora = new Date()) {
+  const fimDoDia = new Date(
+    agora.getFullYear(),
+    agora.getMonth(),
+    agora.getDate(),
+    23,
+    59,
+    59,
+    999
+  );
+
+  const diffMs = Math.max(0, fimDoDia.getTime() - agora.getTime());
+  const horas = Math.ceil(diffMs / 3600000);
+  const horasFormatadas = String(horas).padStart(2, '0');
+
+  return `Restam ${horasFormatadas}H`;
+}
+
 export default function MetaScreen() {
   const params = useLocalSearchParams();
   const auth = useAuth?.() || {};
 
-  const [usuarioIdStorage, setUsuarioIdStorage] = useState(null);
-  const [metas, setMetas] = useState(null);
-  const [loading, setLoading] = useState(true);
-  const [refreshing, setRefreshing] = useState(false);
-
-  const carregarStorageId = useCallback(async () => {
-    try {
-      const AsyncStorageModule = await import('@react-native-async-storage/async-storage');
-      const AsyncStorage = AsyncStorageModule?.default || AsyncStorageModule;
-      const salvo = await AsyncStorage?.getItem?.('usuarioId');
-      const idLimpo = normalizarId(salvo);
-      if (idLimpo) {
-        setUsuarioIdStorage(idLimpo);
-      }
-      return idLimpo;
-    } catch (err) {
-      console.error('Erro ao ler usuarioId do AsyncStorage em Metas:', err);
-      return null;
-    }
-  }, []);
-
-  useEffect(() => {
-    carregarStorageId();
-  }, [carregarStorageId, params?.usuarioId]);
+  const usuarioIdContexto = normalizarId(
+    auth?.usuarioId ?? auth?.usuario?.id ?? auth?.user?.id ?? null
+  );
 
   const usuarioIdParam = useMemo(() => {
     return (
@@ -60,16 +57,49 @@ export default function MetaScreen() {
     );
   }, [params?.usuarioId, params?.id_usuario, params?.idUsuario]);
 
-  const usuarioIdContexto = normalizarId(
-    auth?.usuarioId ?? auth?.usuario?.id ?? auth?.user?.id ?? null
-  );
+  const [usuarioIdStorage, setUsuarioIdStorage] = useState(null);
+  const [metas, setMetas] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
+  const [tempoRestanteDia, setTempoRestanteDia] = useState(() => formatarTempoRestanteDia());
 
-  const usuarioId = usuarioIdParam ?? usuarioIdStorage ?? usuarioIdContexto ?? null;
+  useEffect(() => {
+    setTempoRestanteDia(formatarTempoRestanteDia());
+
+    const intervalo = setInterval(() => {
+      setTempoRestanteDia(formatarTempoRestanteDia());
+    }, 60000);
+
+    return () => clearInterval(intervalo);
+  }, []);
+
+  useEffect(() => {
+    let ativo = true;
+
+    async function carregarStorageId() {
+      try {
+        const salvo = await AsyncStorage.getItem('@usuarioId');
+        const idLimpo = normalizarId(salvo);
+        if (ativo) {
+          setUsuarioIdStorage(idLimpo);
+        }
+      } catch (err) {
+        console.error('Erro ao ler @usuarioId do AsyncStorage em Metas:', err);
+      }
+    }
+
+    carregarStorageId();
+
+    return () => {
+      ativo = false;
+    };
+  }, [usuarioIdContexto, params?.usuarioId]);
+
+  const usuarioId = usuarioIdContexto ?? usuarioIdStorage ?? usuarioIdParam ?? null;
 
   const carregarMetas = useCallback(async ({ isPullToRefresh = false } = {}) => {
-    const idAtual = usuarioId ?? (await carregarStorageId());
-
-    if (!idAtual) {
+    if (!usuarioId) {
+      setMetas(null);
       setLoading(false);
       setRefreshing(false);
       return;
@@ -82,7 +112,7 @@ export default function MetaScreen() {
         setLoading(true);
       }
 
-      const response = await api.get(`/usuarios/${idAtual}/metas-progresso`);
+      const response = await api.get(`/usuarios/${usuarioId}/metas-progresso`);
       setMetas(response.data);
     } catch (err) {
       console.error('Erro ao carregar metas e progresso:', err.response?.data || err.message);
@@ -90,12 +120,13 @@ export default function MetaScreen() {
       setTimeout(() => {
         setLoading(false);
         setRefreshing(false);
-      }, 500);
+      }, 300);
     }
-  }, [usuarioId, carregarStorageId]);
+  }, [usuarioId]);
 
   useFocusEffect(
     useCallback(() => {
+      setTempoRestanteDia(formatarTempoRestanteDia());
       carregarMetas({ isPullToRefresh: false });
     }, [carregarMetas])
   );
@@ -105,6 +136,7 @@ export default function MetaScreen() {
   };
 
   const onRefresh = useCallback(async () => {
+    setTempoRestanteDia(formatarTempoRestanteDia());
     await carregarMetas({ isPullToRefresh: true });
   }, [carregarMetas]);
 
@@ -136,23 +168,18 @@ export default function MetaScreen() {
           }
         >
           <ThemedView style={styles.titleContainer}>
-            {/* Card de Progresso Semanal Geral (Carregado dinamicamente do backend) */}
-           
-           {/* AJUSTAR ISSO */}
-            {/* <CardMetasCompletas 
-              realizadas={metas?.progresso_semanal?.realizadas || 0} 
-              meta={metas?.progresso_semanal?.meta || 15} 
-            /> */}
-
             {/* Seção: Metas do Dia */}
-            <ThemedText style={styles.sectionTitle} themeColor="textSecondary">
-              Metas do dia
-            </ThemedText>
+            <View style={styles.sectionHeaderRow}>
+              <ThemedText style={styles.sectionTitle} themeColor="textSecondary">
+                Metas do dia
+              </ThemedText>
+              <Text style={styles.countdownText}>{tempoRestanteDia}</Text>
+            </View>
 
             <ThemedView style={styles.cardsContainer}>
               <MetaCard
-                tituloMeta={`Concluir ${metas?.progresso_diario?.meta || 3} atividades hoje`}
-                progresso={`${metas?.progresso_diario?.realizadas || 0}/${metas?.progresso_diario?.meta || 3}`}
+                tituloMeta={`Concluir ${metas?.progresso_diario?.meta || 2} atividades hoje`}
+                progresso={`${metas?.progresso_diario?.realizadas || 0}/${metas?.progresso_diario?.meta || 2}`}
                 concluido={metas?.progresso_diario?.concluido || false}
                 onPress={() => console.log('Meta diária clicada')}
               />
@@ -223,10 +250,21 @@ const styles = StyleSheet.create({
     gap: Spacing.two,
     backgroundColor: 'transparent',
   },
-  sectionTitle: {
+  sectionHeaderRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: 8,
     marginTop: Spacing.one,
+  },
+  sectionTitle: {
     fontWeight: '700',
     fontSize: 16,
+  },
+  countdownText: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#888888',
   },
   cardsContainer: {
     gap: Spacing.two,

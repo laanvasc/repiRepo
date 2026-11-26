@@ -3,7 +3,6 @@ import { Image } from 'expo-image';
 import { router, useLocalSearchParams } from 'expo-router';
 import { useEffect, useMemo, useState } from 'react';
 import {
-  Alert,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -12,6 +11,7 @@ import {
   View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 import { MaxContentWidth } from '@/constants/theme';
 import { useAuth } from '@/context/AuthContext';
@@ -71,76 +71,20 @@ const CATALOGO_CORES = {
   },
 };
 
-function extrairIdDeValor(valor) {
-  if (!valor) return null;
-
-  if (typeof valor === 'number' && Number.isFinite(valor) && valor > 0) {
-    return String(valor);
-  }
-
-  if (typeof valor === 'string') {
-    const limpo = valor.trim();
-    if (!limpo) return null;
-
-    if (/^\d+$/.test(limpo)) {
-      return limpo;
-    }
-
-    try {
-      const parsed = JSON.parse(limpo);
-      return extrairIdDeValor(parsed);
-    } catch {
-      return null;
-    }
-  }
-
-  if (typeof valor === 'object') {
-    const direto =
-      valor?.usuario?.id ??
-      valor?.usuario?.id_usuario ??
-      valor?.user?.id ??
-      valor?.user?.id_usuario ??
-      valor?.id ??
-      valor?.id_usuario ??
-      valor?.idUsuario ??
-      null;
-
-    if (direto !== null && direto !== undefined && String(direto).trim() !== '') {
-      return String(direto);
-    }
-  }
-
-  return null;
-}
-
-async function lerEntradasStorage(AsyncStorage, keys) {
-  if (typeof AsyncStorage?.multiGet === 'function') {
-    return AsyncStorage.multiGet(keys);
-  }
-  if (typeof AsyncStorage?.getMany === 'function') {
-    const manyResult = await AsyncStorage.getMany(keys);
-    if (Array.isArray(manyResult)) return manyResult;
-    if (manyResult && typeof manyResult === 'object') {
-      return Object.entries(manyResult);
-    }
-  }
-  const pares = [];
-  for (const key of keys) {
-    const val = await AsyncStorage.getItem(key);
-    pares.push([key, val]);
-  }
-  return pares;
+function normalizarId(valor) {
+  if (valor === null || valor === undefined) return null;
+  const texto = String(valor).trim();
+  if (!texto || texto === 'undefined' || texto === 'null') return null;
+  return /^\d+$/.test(texto) ? texto : null;
 }
 
 export default function DiasEsportesScreen() {
   const params = useLocalSearchParams();
   const authContext = useAuth?.() || {};
 
-  const usuarioObj =
-    authContext?.usuario ??
-    authContext?.user ??
-    authContext?.dadosUsuario ??
-    null;
+  const usuarioIdContexto = normalizarId(
+    authContext?.usuarioId ?? authContext?.usuario?.id ?? authContext?.user?.id ?? null
+  );
 
   const [usuarioIdStorage, setUsuarioIdStorage] = useState(null);
 
@@ -149,24 +93,13 @@ export default function DiasEsportesScreen() {
 
     async function buscarIdNoStorage() {
       try {
-        const AsyncStorageModule = await import('@react-native-async-storage/async-storage');
-        const AsyncStorage = AsyncStorageModule?.default || AsyncStorageModule;
-
-        if (!AsyncStorage?.getAllKeys) return;
-
-        const keys = await AsyncStorage.getAllKeys();
-        if (!keys || keys.length === 0) return;
-
-        const entries = await lerEntradasStorage(AsyncStorage, keys);
-        for (const [, rawValue] of entries) {
-          const idEncontrado = extrairIdDeValor(rawValue);
-          if (idEncontrado && ativo) {
-            setUsuarioIdStorage(idEncontrado);
-            return;
-          }
+        const salvo = await AsyncStorage.getItem('@usuarioId');
+        const idLimpo = normalizarId(salvo);
+        if (ativo) {
+          setUsuarioIdStorage(idLimpo);
         }
       } catch (err) {
-        console.log('Erro ao ler AsyncStorage:', err?.message || err);
+        console.log('Erro ao ler @usuarioId no DiasEsportes:', err?.message || err);
       }
     }
 
@@ -179,19 +112,15 @@ export default function DiasEsportesScreen() {
 
   const usuarioIdParam = useMemo(() => {
     return (
-      extrairIdDeValor(params?.usuarioId) ??
-      extrairIdDeValor(params?.id_usuario) ??
-      extrairIdDeValor(params?.idUsuario) ??
-      extrairIdDeValor(params?.usuario) ??
+      normalizarId(params?.usuarioId) ??
+      normalizarId(params?.id_usuario) ??
+      normalizarId(params?.idUsuario) ??
       null
     );
-  }, [params?.usuarioId, params?.id_usuario, params?.idUsuario, params?.usuario]);
+  }, [params?.usuarioId, params?.id_usuario, params?.idUsuario]);
 
-  const usuarioId =
-    usuarioIdParam ??
-    extrairIdDeValor(usuarioObj) ??
-    usuarioIdStorage ??
-    null;
+  // No fluxo de cadastro/onboarding, o ID recebido por parâmetro é o perfil recém-criado
+  const usuarioId = usuarioIdParam ?? usuarioIdContexto ?? usuarioIdStorage ?? null;
 
   const esportesLista = useMemo(() => {
     try {
@@ -302,26 +231,13 @@ export default function DiasEsportesScreen() {
   }, [diasAcumuladosParam]);
 
   async function sincronizarSessao(idNum) {
-    try {
-      const AsyncStorageModule = await import('@react-native-async-storage/async-storage');
-      const AsyncStorage = AsyncStorageModule?.default || AsyncStorageModule;
+    if (!idNum || Number(idNum) <= 0) return;
+    const idLimpo = Number(idNum);
 
-      if (AsyncStorage?.setItem) {
-        await AsyncStorage.setItem('usuarioId', String(idNum));
-        const atualUsuario =
-          usuarioObj && typeof usuarioObj === 'object'
-            ? { ...usuarioObj, id: idNum }
-            : { id: idNum };
-        await AsyncStorage.setItem('usuario', JSON.stringify(atualUsuario));
-      }
-
-      if (typeof authContext?.setUsuario === 'function') {
-        authContext.setUsuario((prev) => ({ ...(prev || {}), id: idNum }));
-      } else if (typeof authContext?.atualizarUsuario === 'function') {
-        authContext.atualizarUsuario({ ...(usuarioObj || {}), id: idNum });
-      }
-    } catch {
-      // ignora falha auxiliar de sincronização
+    if (typeof authContext?.entrar === 'function') {
+      await authContext.entrar(idLimpo);
+    } else {
+      await AsyncStorage.setItem('@usuarioId', String(idLimpo));
     }
   }
 
@@ -369,66 +285,33 @@ export default function DiasEsportesScreen() {
     });
   }
 
-async function buscarIdPrioritarioNoStorage(AsyncStorage) {
-  const chavesDiretas = ['usuarioId', 'id_usuario', 'usuario', 'user', 'dadosUsuario'];
-
-  for (const chave of chavesDiretas) {
+  async function handleContinuar() {
+    setSalvando(true);
     try {
-      const valor = await AsyncStorage.getItem(chave);
-      const id = extrairIdDeValor(valor);
-      if (id) return id;
-    } catch {
-      // ignora erro de leitura
-    }
-  }
-
-  if (!AsyncStorage?.getAllKeys) return null;
-
-  const keys = await AsyncStorage.getAllKeys();
-  if (!keys || keys.length === 0) return null;
-
-  const keysFiltradas = keys.filter(
-    (k) =>
-      !chavesDiretas.includes(k) &&
-      !/atividade|esporte|catalogo|cache|expo/i.test(String(k))
-  );
-
-  if (keysFiltradas.length === 0) return null;
-
-  const entries = await lerEntradasStorage(AsyncStorage, keysFiltradas);
-  for (const [, rawValue] of entries) {
-    const idEncontrado = extrairIdDeValor(rawValue);
-    if (idEncontrado) return idEncontrado;
-  }
-
-  return null;
-}
-
-async function handleContinuar() {
-  setSalvando(true);
-  try {
-    const idUsuarioNum = usuarioId ? Number(usuarioId) : null;
-    console.log('[diasEsportes] handleContinuar usuarioId:', {
-      usuarioId,
-      usuarioIdParam,
-      usuarioIdStorage,
-      idUsuarioNum,
-    });
-
-    if (idUsuarioNum && idUsuarioNum > 0) {
-      await sincronizarSessao(idUsuarioNum);
-      router.replace({
-        pathname: '/home',
-        params: { usuarioId: String(idUsuarioNum) },
+      const idUsuarioNum = usuarioId ? Number(usuarioId) : null;
+      console.log('[diasEsportes] handleContinuar usuarioId:', {
+        usuarioId,
+        usuarioIdParam,
+        usuarioIdContexto,
+        usuarioIdStorage,
+        idUsuarioNum,
       });
-      return;
-    }
 
-    router.replace('/home');
-  } finally {
-    setSalvando(false);
+      if (idUsuarioNum && idUsuarioNum > 0) {
+        await sincronizarSessao(idUsuarioNum);
+        router.replace({
+          pathname: '/home',
+          params: { usuarioId: String(idUsuarioNum) },
+        });
+        return;
+      }
+
+      router.replace('/home');
+    } finally {
+      setSalvando(false);
+    }
   }
-}
+
   async function handlePular() {
     if (usuarioId) {
       await sincronizarSessao(Number(usuarioId));

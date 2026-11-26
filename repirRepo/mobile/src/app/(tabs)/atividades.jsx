@@ -4,6 +4,7 @@ import { router, useFocusEffect, useLocalSearchParams } from 'expo-router';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { ActivityIndicator, Alert, Platform, RefreshControl, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 import HeaderAreaView from '@/components/header-area-view';
 import { ThemedText } from '@/components/themed-text';
@@ -109,30 +110,9 @@ export default function AtividadesScreen() {
   const params = useLocalSearchParams();
   const auth = useAuth?.() || {};
 
-  const [usuarioIdStorage, setUsuarioIdStorage] = useState(null);
-  const [atividades, setAtividades] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [refreshing, setRefreshing] = useState(false);
-
-  const carregarStorageId = useCallback(async () => {
-    try {
-      const AsyncStorageModule = await import('@react-native-async-storage/async-storage');
-      const AsyncStorage = AsyncStorageModule?.default || AsyncStorageModule;
-      const salvo = await AsyncStorage?.getItem?.('usuarioId');
-      const idLimpo = normalizarId(salvo);
-      if (idLimpo) {
-        setUsuarioIdStorage(idLimpo);
-      }
-      return idLimpo;
-    } catch (err) {
-      console.error('Erro ao ler usuarioId do AsyncStorage em Atividades:', err);
-      return null;
-    }
-  }, []);
-
-  useEffect(() => {
-    carregarStorageId();
-  }, [carregarStorageId, params?.usuarioId]);
+  const usuarioIdContexto = normalizarId(
+    auth?.usuarioId ?? auth?.usuario?.id ?? auth?.user?.id ?? null
+  );
 
   const usuarioIdParam = useMemo(() => {
     return (
@@ -143,12 +123,35 @@ export default function AtividadesScreen() {
     );
   }, [params?.usuarioId, params?.id_usuario, params?.idUsuario]);
 
-  const usuarioIdContexto = normalizarId(
-    auth?.usuarioId ?? auth?.usuario?.id ?? auth?.user?.id ?? null
-  );
+  const [usuarioIdStorage, setUsuarioIdStorage] = useState(null);
+  const [atividades, setAtividades] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
 
-  // Prioriza o ID da rota, depois o AsyncStorage e por último o AuthContext
-  const usuarioId = usuarioIdParam ?? usuarioIdStorage ?? usuarioIdContexto ?? null;
+  useEffect(() => {
+    let ativo = true;
+
+    async function carregarStorageId() {
+      try {
+        const salvo = await AsyncStorage.getItem('@usuarioId');
+        const idLimpo = normalizarId(salvo);
+        if (ativo) {
+          setUsuarioIdStorage(idLimpo);
+        }
+      } catch (err) {
+        console.error('Erro ao ler @usuarioId do AsyncStorage em Atividades:', err);
+      }
+    }
+
+    carregarStorageId();
+
+    return () => {
+      ativo = false;
+    };
+  }, [usuarioIdContexto, params?.usuarioId]);
+
+  // Prioriza o ID do contexto de autenticação, depois o storage e por último o parâmetro da rota
+  const usuarioId = usuarioIdContexto ?? usuarioIdStorage ?? usuarioIdParam ?? null;
 
   const diaAtualInfo = useMemo(() => {
     const idxDia = new Date().getDay();
@@ -156,9 +159,7 @@ export default function AtividadesScreen() {
   }, []);
 
   const refetchAtividades = useCallback(async ({ isPullToRefresh = false } = {}) => {
-    const idAtual = usuarioId ?? (await carregarStorageId());
-
-    if (!idAtual) {
+    if (!usuarioId) {
       setAtividades([]);
       setLoading(false);
       setRefreshing(false);
@@ -172,7 +173,7 @@ export default function AtividadesScreen() {
         setLoading(true);
       }
 
-      const response = await api.get(`/usuarios/${idAtual}/atividades-frequentes`);
+      const response = await api.get(`/usuarios/${usuarioId}/atividades-frequentes`);
       setAtividades(Array.isArray(response.data) ? response.data : []);
     } catch (err) {
       console.error('Erro ao carregar atividades frequentes:', err.response?.data || err.message);
@@ -180,7 +181,7 @@ export default function AtividadesScreen() {
       setLoading(false);
       setRefreshing(false);
     }
-  }, [usuarioId, carregarStorageId]);
+  }, [usuarioId]);
 
   useFocusEffect(
     useCallback(() => {
@@ -193,11 +194,10 @@ export default function AtividadesScreen() {
   }, [refetchAtividades]);
 
   const handleFinalizarAtividades = async () => {
-    const idAtual = usuarioId ?? (await carregarStorageId());
-    if (!idAtual) return;
+    if (!usuarioId) return;
 
     try {
-      await api.post(`/usuarios/${idAtual}/atualizar-ofensiva`);
+      await api.post(`/usuarios/${usuarioId}/atualizar-ofensiva`);
       await refetchAtividades({ isPullToRefresh: true });
       Alert.alert('Sucesso', 'Atividades diárias registadas com sucesso!');
     } catch (err) {
@@ -289,19 +289,6 @@ export default function AtividadesScreen() {
               </Text>
             )}
           </ThemedView>
-
-          {/* <TouchableOpacity
-            style={styles.addBottomButton}
-            onPress={() => router.push('/cadastrarAtividade')}
-            activeOpacity={0.8}
-          >
-            <Ionicons name="add-circle-outline" size={20} color="#FF5733" />
-            <Text style={styles.addBottomButtonText}>Adicionar nova atividade</Text>
-          </TouchableOpacity> */}
-
-          {/* <ThemedView style={styles.buttonContainer}>
-            <Button titulo="Finalizar atividades diárias" onPress={handleFinalizarAtividades} />
-          </ThemedView> */}
 
           <ThemedView style={styles.footerContainer}>
             <ThemedText style={styles.footerText}>✨ Chegaste ao fim das atividades</ThemedText>

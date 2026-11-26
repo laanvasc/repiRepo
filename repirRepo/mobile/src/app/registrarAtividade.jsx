@@ -1,7 +1,7 @@
 import { Ionicons } from '@expo/vector-icons';
 import { router, useLocalSearchParams } from 'expo-router';
-import { useState } from 'react';
-import { ActivityIndicator, Alert, Platform, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import { useMemo, useState } from 'react';
+import { Alert, Platform, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import HeaderAreaView from '@/components/header-area-view';
@@ -13,34 +13,33 @@ import { BottomTabInset, MaxContentWidth, Spacing } from '@/constants/theme';
 import { useAuth } from '@/context/AuthContext';
 import { api } from '@/services/api';
 
-// Função auxiliar para formatar o horário (ex: "18:00:00" ou data ISO -> "18:00")
-const formatarHorario = (horarioRaw) => {
-  if (!horarioRaw) return 'Horário flexível';
-  
-  // Se vier no formato ISO (ex: "1970-01-01T18:00:00.000Z")
-  if (horarioRaw.includes('T')) {
-    const partes = horarioRaw.split('T')[1];
-    if (partes) {
-      return partes.substring(0, 5); // Retorna apenas "HH:mm"
+function extrairXpAtividade(params) {
+  const candidatos = [
+    params?.xp,
+    params?.xp_atividade,
+    params?.xpAtividade,
+    params?.xp_base,
+    params?.xpBase,
+    params?.xp_ganho,
+  ];
+
+  for (const valor of candidatos) {
+    const numero = Number(valor);
+    if (Number.isFinite(numero) && numero > 0) {
+      return numero;
     }
   }
-  
-  // Se vier no formato de string "HH:mm:ss"
-  if (horarioRaw.length >= 5) {
-    return horarioRaw.substring(0, 5);
-  }
 
-  return horarioRaw;
-};
+  return 30;
+}
 
 export default function RegistrarAtividadeScreen() {
   const { usuarioId } = useAuth();
   const params = useLocalSearchParams();
 
-  // Recebe e formata os dados passados pelo card na listagem
   const idAtividade = params.id_atividade;
   const nomeAtividade = params.nome_atividade || 'Atividade';
-  const horarioAtividade = formatarHorario(params.horario);
+  const xpCalculado = useMemo(() => extrairXpAtividade(params), [params]);
 
   const [duracao, setDuracao] = useState('45');
   const [intensidade, setIntensidade] = useState('Moderado'); // 'Leve' | 'Moderado' | 'Intenso'
@@ -56,18 +55,16 @@ export default function RegistrarAtividadeScreen() {
     try {
       setLoading(true);
 
-      // Envia o registo para o backend (tabela usuario_atividades + ganho de XP + ofensiva)
       await api.post(`/usuarios/${usuarioId}/registrar-atividade`, {
         id_atividade: Number(idAtividade),
         duracao_minutos: Number(duracao) || 0,
-        intensidade: intensidade,
-        observacao: observacao,
-        xp_ganho: 50, // XP fixo por conclusão ou dinâmico
+        intensidade,
+        observacao,
+        xp_ganho: xpCalculado,
       });
 
-      // Sucesso: exibe o alerta e retorna à tela anterior (lista de atividades)
-      Alert.alert('Sucesso!', 'Atividade registada com sucesso! +50 XP', [
-        { text: 'OK', onPress: () => router.back() }
+      Alert.alert('Sucesso!', `Atividade registada com sucesso! +${xpCalculado} XP`, [
+        { text: 'OK', onPress: () => router.back() },
       ]);
     } catch (err) {
       console.error('Erro ao registar atividade:', err.response?.data || err.message);
@@ -90,12 +87,11 @@ export default function RegistrarAtividadeScreen() {
           style={styles.scroll}
         >
           <ThemedView style={styles.formContainer}>
-            
             {/* Card de Resumo da Atividade */}
             <View style={styles.resumoCard}>
               <View style={styles.resumoInfo}>
                 <Text style={styles.tituloAtividade}>{nomeAtividade}</Text>
-                <Text style={styles.detalheAtividade}>Planejado para as {horarioAtividade}</Text>
+                {/* <Text style={styles.detalheAtividade}>XP da atividade: {xpCalculado} XP</Text> */}
               </View>
             </View>
 
@@ -150,18 +146,17 @@ export default function RegistrarAtividadeScreen() {
             {/* Banner de Recompensa de XP */}
             <View style={styles.bannerXp}>
               <Ionicons name="flash" size={24} color="#854D0E" />
-              <Text style={styles.bannerXpText}>+50 XP conquistados</Text>
+              <Text style={styles.bannerXpText}>+{xpCalculado} XP conquistados</Text>
             </View>
 
             {/* Botão Concluir */}
             <View style={styles.buttonContainer}>
-              <Button 
-                titulo={loading ? "A registar..." : "Concluir"} 
+              <Button
+                titulo={loading ? 'A registar...' : 'Concluir'}
                 onPress={handleConcluir}
                 disabled={loading}
               />
             </View>
-
           </ThemedView>
 
           {Platform.OS === 'web' && <WebBadge />}

@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { ActivityIndicator, Platform, RefreshControl, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 import { ThemedView } from '@/components/themed-view';
 import { WebBadge } from '@/components/web-badge';
@@ -30,31 +31,9 @@ export default function HomeScreen() {
   const params = useLocalSearchParams();
   const auth = useAuth?.() || {};
 
-  const [usuarioIdStorage, setUsuarioIdStorage] = useState(null);
-
-  useEffect(() => {
-    let ativo = true;
-
-    async function lerIdStorage() {
-      try {
-        const AsyncStorageModule = await import('@react-native-async-storage/async-storage');
-        const AsyncStorage = AsyncStorageModule?.default || AsyncStorageModule;
-        const salvo = await AsyncStorage?.getItem?.('usuarioId');
-        const idLimpo = normalizarId(salvo);
-        if (ativo && idLimpo) {
-          setUsuarioIdStorage(idLimpo);
-        }
-      } catch (err) {
-        console.error('Erro ao ler usuarioId do AsyncStorage na Home:', err);
-      }
-    }
-
-    lerIdStorage();
-
-    return () => {
-      ativo = false;
-    };
-  }, [params?.usuarioId]);
+  const usuarioIdContexto = normalizarId(
+    auth?.usuarioId ?? auth?.usuario?.id ?? auth?.user?.id ?? null
+  );
 
   const usuarioIdParam = useMemo(() => {
     return (
@@ -65,23 +44,43 @@ export default function HomeScreen() {
     );
   }, [params?.usuarioId, params?.id_usuario, params?.idUsuario]);
 
-  const usuarioIdContexto = normalizarId(
-    auth?.usuarioId ?? auth?.usuario?.id ?? auth?.user?.id ?? null
-  );
+  const [usuarioIdStorage, setUsuarioIdStorage] = useState(null);
 
-  // Prioriza o ID explícito da rota; se não houver, usa o do AsyncStorage; por último, o do AuthContext
-  const usuarioId = usuarioIdParam ?? usuarioIdStorage ?? usuarioIdContexto ?? null;
+  useEffect(() => {
+    let ativo = true;
+
+    async function lerIdStorage() {
+      try {
+        const salvo = await AsyncStorage.getItem('@usuarioId');
+        const idLimpo = normalizarId(salvo);
+        if (ativo) {
+          setUsuarioIdStorage(idLimpo);
+        }
+      } catch (err) {
+        console.error('Erro ao ler @usuarioId do AsyncStorage na Home:', err);
+      }
+    }
+
+    lerIdStorage();
+
+    return () => {
+      ativo = false;
+    };
+  }, [usuarioIdContexto, params?.usuarioId]);
+
+  // Prioriza o ID do contexto de autenticação (atualizado no login/cadastro),
+  // depois o storage sincronizado e por último o parâmetro da rota
+  const usuarioId = usuarioIdContexto ?? usuarioIdStorage ?? usuarioIdParam ?? null;
 
   const [primeiroNome, setPrimeiroNome] = useState('Usuário');
-  const [listaAtividadesFrequentes, setListaAtividadesFrequentes] = useState([]);
   const [refreshing, setRefreshing] = useState(false);
   const [dadosCarregando, setDadosCarregando] = useState(true);
   const [refreshKey, setRefreshKey] = useState(0);
 
-  const carregarNomeUsuario = useCallback(async () => {
-    if (!usuarioId) return;
+  const carregarNomeUsuario = useCallback(async (idAlvo) => {
+    if (!idAlvo) return;
     try {
-      const response = await api.get(`/usuarios/${usuarioId}/nome`);
+      const response = await api.get(`/usuarios/${idAlvo}/nome`);
       const nomeCompleto = typeof response.data === 'string'
         ? response.data
         : (response.data?.nome || response.data?.nome_usuario || 'Usuário');
@@ -89,22 +88,11 @@ export default function HomeScreen() {
     } catch (err) {
       console.error('Erro ao buscar o nome:', err);
     }
-  }, [usuarioId]);
-
-  const carregarAtividades = useCallback(async () => {
-    if (!usuarioId) return;
-    try {
-      const response = await api.get(`/usuarios/${usuarioId}/atividades-frequentes`);
-      setListaAtividadesFrequentes(Array.isArray(response.data) ? response.data : []);
-    } catch (err) {
-      console.error('Erro ao buscar atividades frequentes:', err);
-    }
-  }, [usuarioId]);
+  }, []);
 
   const refetchHome = useCallback(async ({ isPullToRefresh = false } = {}) => {
     if (!usuarioId) {
       setPrimeiroNome('Usuário');
-      setListaAtividadesFrequentes([]);
       setDadosCarregando(false);
       setRefreshing(false);
       return;
@@ -117,11 +105,7 @@ export default function HomeScreen() {
         setDadosCarregando(true);
       }
 
-      await Promise.all([
-        carregarNomeUsuario(),
-        carregarAtividades(),
-      ]);
-
+      await carregarNomeUsuario(usuarioId);
       setRefreshKey((prev) => prev + 1);
     } catch (err) {
       console.error('Erro ao carregar dados da home:', err);
@@ -129,7 +113,7 @@ export default function HomeScreen() {
       setDadosCarregando(false);
       setRefreshing(false);
     }
-  }, [usuarioId, carregarNomeUsuario, carregarAtividades]);
+  }, [usuarioId, carregarNomeUsuario]);
 
   useFocusEffect(
     useCallback(() => {
@@ -171,12 +155,14 @@ export default function HomeScreen() {
         >
           <ThemedView style={styles.heroSection} />
 
-          <ThemedView style={styles.cardsContainer}>
-            <CardOfensiva key={`ofensiva-${refreshKey}`} usuarioId={usuarioId} />
-            <ProximaAtividadeCard key={`proxima-${refreshKey}`} usuarioId={usuarioId} />
-            <CardConquistasDesbloqueadas key={`conquistas-${refreshKey}`} usuarioId={usuarioId} />
-            <CardDestaquesSemanas key={`destaques-${refreshKey}`} usuarioId={usuarioId} />
-          </ThemedView>
+          {usuarioId ? (
+            <ThemedView style={styles.cardsContainer}>
+              <CardOfensiva key={`ofensiva-${usuarioId}-${refreshKey}`} usuarioId={usuarioId} />
+              <ProximaAtividadeCard key={`proxima-${usuarioId}-${refreshKey}`} usuarioId={usuarioId} />
+              <CardConquistasDesbloqueadas key={`conquistas-${usuarioId}-${refreshKey}`} usuarioId={usuarioId} />
+              <CardDestaquesSemanas key={`destaques-${usuarioId}-${refreshKey}`} usuarioId={usuarioId} />
+            </ThemedView>
+          ) : null}
 
           <ThemedView style={styles.footerContainer}>
             <Text style={styles.footerText}>✨ Chegaste ao fim da página</Text>

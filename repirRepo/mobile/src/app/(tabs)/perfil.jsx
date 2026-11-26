@@ -1,10 +1,11 @@
 import { Ionicons } from '@expo/vector-icons';
+import { Image } from 'expo-image';
 import { router, useFocusEffect, useLocalSearchParams } from 'expo-router';
-import { useCallback, useEffect, useMemo, useState } from 'react';
-import { ActivityIndicator, Platform, RefreshControl, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { ActivityIndicator, Animated, Platform, RefreshControl, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
-import HeaderAreaView from '@/components/header-area-view';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 
@@ -19,11 +20,64 @@ import { BottomTabInset, MaxContentWidth, Spacing } from '@/constants/theme';
 import { useAuth } from '@/context/AuthContext';
 import { api } from '@/services/api';
 
+const AVATAR_PADRAO = require('@/components/assets/mascote/pose1-mascot1.png');
+
 function normalizarId(valor) {
   if (valor === null || valor === undefined) return null;
   const texto = String(valor).trim();
   if (!texto || texto === 'undefined' || texto === 'null') return null;
   return texto;
+}
+
+function extrairAnoCriacao(payload) {
+  if (!payload || typeof payload !== 'object') {
+    return String(new Date().getFullYear());
+  }
+
+  const rawDate =
+    payload.data_criacao ??
+    payload.criado_em ??
+    payload.created_at ??
+    payload.createdAt ??
+    payload.dataCadastro ??
+    payload.data_cadastro ??
+    null;
+
+  if (rawDate) {
+    const matchAno = String(rawDate).match(/\b(19|20)\d{2}\b/);
+    if (matchAno) return matchAno[0];
+
+    const parsed = new Date(rawDate);
+    if (!Number.isNaN(parsed.getTime())) {
+      return String(parsed.getFullYear());
+    }
+  }
+
+  if (payload.ano_criacao || payload.ano) {
+    const matchAnoDireto = String(payload.ano_criacao || payload.ano).match(/\b(19|20)\d{2}\b/);
+    if (matchAnoDireto) return matchAnoDireto[0];
+  }
+
+  return String(new Date().getFullYear());
+}
+
+function extrairNomeUsuario(data, fallback = '') {
+  if (typeof data === 'string' && data.trim()) {
+    return data.trim();
+  }
+  if (data && typeof data === 'object') {
+    const encontrado =
+      data.nome ||
+      data.nome_usuario ||
+      data.nomeUsuario ||
+      data.usuario?.nome ||
+      data.user?.nome ||
+      '';
+    if (typeof encontrado === 'string' && encontrado.trim()) {
+      return encontrado.trim();
+    }
+  }
+  return fallback;
 }
 
 // Botão de Configurações customizado mantendo o design padrão
@@ -45,32 +99,13 @@ export default function PerfilScreen() {
   const params = useLocalSearchParams();
   const auth = useAuth?.() || {};
 
-  const [usuarioIdStorage, setUsuarioIdStorage] = useState(null);
-  const [nomeUsuario, setNomeUsuario] = useState('Meu Perfil');
-  const [progressoSemanal, setProgressoSemanal] = useState([]);
-  const [conquistas, setConquistas] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [refreshing, setRefreshing] = useState(false);
+  const usuarioIdContexto = normalizarId(
+    auth?.usuarioId ?? auth?.usuario?.id ?? auth?.user?.id ?? null
+  );
 
-  const carregarStorageId = useCallback(async () => {
-    try {
-      const AsyncStorageModule = await import('@react-native-async-storage/async-storage');
-      const AsyncStorage = AsyncStorageModule?.default || AsyncStorageModule;
-      const salvo = await AsyncStorage?.getItem?.('usuarioId');
-      const idLimpo = normalizarId(salvo);
-      if (idLimpo) {
-        setUsuarioIdStorage(idLimpo);
-      }
-      return idLimpo;
-    } catch (err) {
-      console.error('Erro ao ler usuarioId do AsyncStorage no Perfil:', err);
-      return null;
-    }
-  }, []);
-
-  useEffect(() => {
-    carregarStorageId();
-  }, [carregarStorageId, params?.usuarioId]);
+  const nomeContexto = useMemo(() => {
+    return extrairNomeUsuario(auth?.usuario ?? auth?.user ?? auth, '');
+  }, [auth]);
 
   const usuarioIdParam = useMemo(() => {
     return (
@@ -81,16 +116,73 @@ export default function PerfilScreen() {
     );
   }, [params?.usuarioId, params?.id_usuario, params?.idUsuario]);
 
-  const usuarioIdContexto = normalizarId(
-    auth?.usuarioId ?? auth?.usuario?.id ?? auth?.user?.id ?? null
-  );
+  const [usuarioIdStorage, setUsuarioIdStorage] = useState(null);
+  const [nomeUsuario, setNomeUsuario] = useState(nomeContexto);
+  const [anoCriacao, setAnoCriacao] = useState(() => String(new Date().getFullYear()));
+  const [progressoSemanal, setProgressoSemanal] = useState([]);
+  const [conquistas, setConquistas] = useState([]);
+  const [refreshKey, setRefreshKey] = useState(0);
+  const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
 
-  const usuarioId = usuarioIdParam ?? usuarioIdStorage ?? usuarioIdContexto ?? null;
+  const headerVisivelRef = useRef(false);
+  const headerAnim = useRef(new Animated.Value(0)).current;
 
-  const carregarDadosPerfil = useCallback(async ({ isPullToRefresh = false } = {}) => {
-    const idAtual = usuarioId ?? (await carregarStorageId());
+  useEffect(() => {
+    if (nomeContexto) {
+      setNomeUsuario((prev) => prev || nomeContexto);
+    }
+  }, [nomeContexto]);
 
-    if (!idAtual) {
+  useEffect(() => {
+    let ativo = true;
+
+    async function carregarStorageId() {
+      try {
+        const salvo = await AsyncStorage.getItem('@usuarioId');
+        const idLimpo = normalizarId(salvo);
+        if (ativo) {
+          setUsuarioIdStorage(idLimpo);
+        }
+
+        const usuarioSalvoRaw =
+          (await AsyncStorage.getItem('@usuario')) ??
+          (await AsyncStorage.getItem('usuario'));
+
+        if (usuarioSalvoRaw && ativo) {
+          try {
+            const usuarioSalvo = JSON.parse(usuarioSalvoRaw);
+            const nomeSalvo = extrairNomeUsuario(usuarioSalvo, '');
+            if (nomeSalvo) {
+              setNomeUsuario((prev) => prev || nomeSalvo);
+            }
+          } catch {
+            // ignora se não for JSON
+          }
+        }
+      } catch (err) {
+        console.error('Erro ao ler @usuarioId do AsyncStorage no Perfil:', err);
+      }
+    }
+
+    carregarStorageId();
+
+    return () => {
+      ativo = false;
+    };
+  }, [usuarioIdContexto, params?.usuarioId]);
+
+  // Prioriza o ID do contexto de autenticação, depois o storage e por último o parâmetro da rota
+  const usuarioId = usuarioIdContexto ?? usuarioIdStorage ?? usuarioIdParam ?? null;
+
+  const carregarDadosPerfil = useCallback(async ({ isPullToRefresh = false, showFullOverlay = false } = {}) => {
+    setRefreshKey((prev) => prev + 1);
+
+    if (!usuarioId) {
+      setNomeUsuario(nomeContexto || '');
+      setAnoCriacao(String(new Date().getFullYear()));
+      setProgressoSemanal([]);
+      setConquistas([]);
       setLoading(false);
       setRefreshing(false);
       return;
@@ -99,23 +191,24 @@ export default function PerfilScreen() {
     try {
       if (isPullToRefresh) {
         setRefreshing(true);
-      } else {
+      } else if (showFullOverlay) {
         setLoading(true);
       }
 
-      // 1. Carregar nome do utilizador
-      const resNome = await api.get(`/usuarios/${idAtual}/nome`);
-      const nomeCompleto = typeof resNome.data === 'string'
-        ? resNome.data
-        : (resNome.data?.nome || resNome.data?.nome_usuario || 'Meu Perfil');
-      setNomeUsuario(nomeCompleto);
+      // 1. Carregar nome e metadados do utilizador
+      const resNome = await api.get(`/usuarios/${usuarioId}/nome`);
+      const nomeApi = extrairNomeUsuario(resNome.data, nomeContexto);
+      if (nomeApi) {
+        setNomeUsuario(nomeApi);
+      }
+      setAnoCriacao(extrairAnoCriacao(resNome.data));
 
       // 2. Carregar progresso semanal real do utilizador
-      const resProgresso = await api.get(`/usuarios/${idAtual}/progresso-semanal`);
+      const resProgresso = await api.get(`/usuarios/${usuarioId}/progresso-semanal`);
       setProgressoSemanal(Array.isArray(resProgresso.data) ? resProgresso.data : []);
 
       // 3. Carregar conquistas / troféus reais do utilizador
-      const resConquistas = await api.get(`/usuarios/${idAtual}/conquistas`);
+      const resConquistas = await api.get(`/usuarios/${usuarioId}/conquistas`);
       setConquistas(Array.isArray(resConquistas.data) ? resConquistas.data : []);
     } catch (err) {
       console.error('Erro ao carregar dados do perfil:', err);
@@ -123,39 +216,78 @@ export default function PerfilScreen() {
       setTimeout(() => {
         setLoading(false);
         setRefreshing(false);
-      }, 500);
+      }, 300);
     }
-  }, [usuarioId, carregarStorageId]);
+  }, [usuarioId, nomeContexto]);
 
   useFocusEffect(
     useCallback(() => {
-      carregarDadosPerfil({ isPullToRefresh: false });
+      carregarDadosPerfil({ isPullToRefresh: false, showFullOverlay: false });
     }, [carregarDadosPerfil])
   );
 
   const onRefresh = useCallback(async () => {
-    await carregarDadosPerfil({ isPullToRefresh: true });
+    await carregarDadosPerfil({ isPullToRefresh: true, showFullOverlay: false });
   }, [carregarDadosPerfil]);
+
+  const handleScroll = useCallback((event) => {
+    const offsetY = event?.nativeEvent?.contentOffset?.y ?? 0;
+
+    // Histerese (85 para mostrar, 55 para ocultar) evita alternância rápida perto do limiar
+    let proximoEstado = headerVisivelRef.current;
+    if (!headerVisivelRef.current && offsetY > 85) {
+      proximoEstado = true;
+    } else if (headerVisivelRef.current && offsetY < 55) {
+      proximoEstado = false;
+    }
+
+    if (proximoEstado !== headerVisivelRef.current) {
+      headerVisivelRef.current = proximoEstado;
+      Animated.timing(headerAnim, {
+        toValue: proximoEstado ? 1 : 0,
+        duration: 180,
+        useNativeDriver: true,
+      }).start();
+    }
+  }, [headerAnim]);
+
+  const irParaConfiguracoes = useCallback(() => {
+    router.navigate('/configuracoes');
+  }, []);
+
+  const headerTranslateY = headerAnim.interpolate({
+    inputRange: [0, 1],
+    outputRange: [-16, 0],
+  });
 
   return (
     <ThemedView style={styles.container}>
       <SafeAreaView style={styles.safeArea} edges={['top', 'left', 'right']}>
-        {/* Header Fixo com o botão de Configurações */}
-        <ThemedView style={styles.headerContainer}>
-          <HeaderAreaView
-            title={nomeUsuario}
-            buttonIcon={
-              <SettingsButton
-                onPress={() => router.navigate('/configuracoes')}
-              />
-            }
-          />
-        </ThemedView>
+        {/* Barra sobreposta suave ao rolar para baixo, sem deslocar o ScrollView */}
+        <Animated.View
+          pointerEvents="box-none"
+          style={[
+            styles.stickyHeader,
+            {
+              opacity: headerAnim,
+              transform: [{ translateY: headerTranslateY }],
+            },
+          ]}
+        >
+          <View style={styles.stickyInner} pointerEvents="auto">
+            <Text style={styles.stickyTitle} numberOfLines={1}>
+              {nomeUsuario}
+            </Text>
+            <SettingsButton onPress={irParaConfiguracoes} />
+          </View>
+        </Animated.View>
 
         <ScrollView
           style={styles.scrollView}
           contentContainerStyle={styles.scrollContent}
           showsVerticalScrollIndicator={false}
+          scrollEventThrottle={16}
+          onScroll={handleScroll}
           refreshControl={
             <RefreshControl
               refreshing={refreshing}
@@ -165,16 +297,54 @@ export default function PerfilScreen() {
             />
           }
         >
+          {/* Cabeçalho superior: Imagem + Nome + Ano de criação + Configurações */}
+          <View style={styles.topProfileHeader}>
+            <View style={styles.profileLeft}>
+              <View style={styles.avatarCircle}>
+                <Image
+                  source={AVATAR_PADRAO}
+                  style={styles.avatarImage}
+                  contentFit="contain"
+                />
+              </View>
+
+              <View style={styles.profileInfo}>
+                <Text style={styles.profileName} numberOfLines={2}>
+                  {nomeUsuario}
+                </Text>
+                <Text style={styles.profileSince}>
+                  Aqui desde {anoCriacao}
+                </Text>
+              </View>
+            </View>
+
+            <SettingsButton onPress={irParaConfiguracoes} />
+          </View>
+
           <ThemedView style={styles.cardsWrapper}>
-            <CardXpTotal usuarioId={usuarioId} />
+            {usuarioId ? (
+              <CardXpTotal
+                key={`xp-${usuarioId}-${refreshKey}`}
+                usuarioId={usuarioId}
+                refreshKey={refreshKey}
+              />
+            ) : null}
 
             {/* Passando os dados dinâmicos da semana do utilizador logado */}
             <CardProgressoSemanal
+              key={`semanal-${usuarioId}-${refreshKey}`}
               titulo="Progresso Semanal"
               dias={progressoSemanal}
+              refreshKey={refreshKey}
             />
 
-            <MensalCard usuarioId={usuarioId} />
+            {usuarioId ? (
+              <MensalCard
+                key={`mensal-${usuarioId}-${refreshKey}`}
+                usuarioId={usuarioId}
+                refreshKey={refreshKey}
+              />
+            ) : null}
           </ThemedView>
 
           <ThemedView style={styles.sectionsWrapper}>
@@ -232,10 +402,75 @@ const styles = StyleSheet.create({
     maxWidth: MaxContentWidth,
     alignSelf: 'center',
   },
-  headerContainer: {
-    width: '100%',
+  stickyHeader: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    zIndex: 20,
     paddingHorizontal: Spacing.four,
-    backgroundColor: 'transparent',
+    paddingTop: 6,
+  },
+  stickyInner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    borderRadius: 28,
+    backgroundColor: '#FFF7FF',
+    borderWidth: 1,
+    borderColor: 'rgba(15, 23, 42, 0.1)',
+  },
+  stickyTitle: {
+    flex: 1,
+    fontSize: 18,
+    fontWeight: '700',
+    color: '#0F172A',
+    marginRight: 12,
+  },
+  topProfileHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingTop: Spacing.one,
+    paddingBottom: Spacing.one,
+    gap: 12,
+  },
+  profileLeft: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 14,
+  },
+  avatarCircle: {
+    width: 78,
+    height: 78,
+    borderRadius: 39,
+    backgroundColor: '#FF5733',
+    alignItems: 'center',
+    justifyContent: 'center',
+    overflow: 'hidden',
+  },
+  avatarImage: {
+    width: 62,
+    height: 62,
+  },
+  profileInfo: {
+    flex: 1,
+    justifyContent: 'center',
+    gap: 4,
+  },
+  profileName: {
+    fontSize: 22,
+    fontWeight: '700',
+    color: '#0F172A',
+    lineHeight: 26,
+  },
+  profileSince: {
+    fontSize: 14,
+    fontWeight: '500',
+    color: '#475569',
   },
   settingsButton: {
     width: 48,
