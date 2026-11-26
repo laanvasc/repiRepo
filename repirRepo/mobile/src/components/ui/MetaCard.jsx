@@ -1,55 +1,124 @@
-import { Ionicons } from '@expo/vector-icons';
-import { ActivityIndicator, Image, Pressable, StyleSheet, Text, View } from 'react-native';
+import { Image } from 'expo-image';
+import { useMemo } from 'react';
+import { ActivityIndicator, Pressable, StyleSheet, Text, View } from 'react-native';
 
-// Importação com o alias no topo
-import mascotePadrao from '@/components/assets/mascote/pose1-mascot1.png'; // ajuste para o caminho da imagem existente caso necessário
+import metaIconDefault from '@/components/assets/icones/meta-icon.svg';
+
+function resolverPercentual({ atual, meta, progresso, concluido }) {
+  if (concluido) return 100;
+
+  const numAtual = Number(atual);
+  const numMeta = Number(meta);
+
+  if (Number.isFinite(numAtual) && Number.isFinite(numMeta) && numMeta > 0) {
+    return Math.min(100, Math.max(0, (numAtual / numMeta) * 100));
+  }
+
+  if (typeof progresso === 'string' && progresso.includes('/')) {
+    const [rawA, rawM] = progresso.split('/');
+    const parsedA = Number(rawA);
+    const parsedM = Number(rawM);
+    if (Number.isFinite(parsedA) && Number.isFinite(parsedM) && parsedM > 0) {
+      return Math.min(100, Math.max(0, (parsedA / parsedM) * 100));
+    }
+  }
+
+  return 0;
+}
 
 export default function MetaCard({
-  tituloMeta = 'Fazer 40 minutos de cárdio',
+  tituloMeta = 'Fazer 3 atividades',
   categoriaMeta,
   onPress,
   isLoading = false,
   disabled = false,
   variante = 'test',
   iconeMeta,
-  concluido = false, // Nova prop para verificar se foi concluído
+  concluido = false,
+  atual,
+  meta,
+  progresso,
+  mostrarBarra = true,
 }) {
+  const sourceIcone = iconeMeta || metaIconDefault;
+
+  const percentual = useMemo(
+    () => resolverPercentual({ atual, meta, progresso, concluido }),
+    [atual, meta, progresso, concluido]
+  );
+
   return (
     <Pressable
       onPress={onPress}
       disabled={disabled || isLoading}
       style={({ pressed }) => [
         styles.card,
+        concluido ? styles.cardConcluido : styles.cardPendente,
         pressed && styles.pressed,
         disabled && styles.disabled,
       ]}
     >
-      {/* Ícone Circular da Esquerda */}
-      <View style={styles.iconContainer}>
-        <Image
-          source={iconeMeta || mascotePadrao}
-          style={styles.iconImage}
-          resizeMode="contain"
-        />
+      <View style={styles.rowContent}>
+        {/* Ícone à esquerda: com círculo branco quando concluído, solto quando pendente */}
+        <View
+          style={[
+            styles.iconContainer,
+            concluido ? styles.iconContainerConcluido : styles.iconContainerPendente,
+          ]}
+        >
+          <Image
+            source={sourceIcone}
+            style={styles.iconImage}
+            contentFit="contain"
+          />
+        </View>
+
+        {/* Conteúdo / Título */}
+        <View style={styles.contentContainer}>
+          {isLoading ? (
+            <ActivityIndicator color={concluido ? '#0F172A' : '#888888'} />
+          ) : (
+            <Text
+              style={[
+                styles.titleText,
+                concluido ? styles.titleTextConcluido : styles.titleTextPendente,
+              ]}
+            >
+              {tituloMeta}
+            </Text>
+          )}
+        </View>
+
+        {/* Contador opcional à direita quando progresso for informado */}
+        {progresso ? (
+          <Text
+            style={[
+              styles.progressLabel,
+              concluido ? styles.titleTextConcluido : styles.titleTextPendente,
+            ]}
+          >
+            {progresso}
+          </Text>
+        ) : null}
       </View>
 
-      {/* Conteúdo / Título */}
-      <View style={styles.contentContainer}>
-        {isLoading ? (
-          <ActivityIndicator color="#FFFFFF" />
-        ) : (
-          <Text style={styles.titleText}>{tituloMeta}</Text>
-        )}
-      </View>
-
-      {/* Ícone à direita: Visto verde se concluído, ou o '✕' padrão */}
-      <View style={styles.actionContainer}>
-        {concluido ? (
-          <Ionicons name="checkmark-circle" size={28} color="#22C55E" />
-        ) : (
-          <Text style={styles.actionIcon}>✕</Text>
-        )}
-      </View>
+      {/* Barra inferior de progressão */}
+      {mostrarBarra ? (
+        <View
+          style={[
+            styles.progressTrack,
+            concluido ? styles.trackConcluido : styles.trackPendente,
+          ]}
+        >
+          <View
+            style={[
+              styles.progressFill,
+              concluido ? styles.fillConcluido : styles.fillPendente,
+              { width: `${percentual}%` },
+            ]}
+          />
+        </View>
+      ) : null}
     </Pressable>
   );
 }
@@ -57,33 +126,50 @@ export default function MetaCard({
 const styles = StyleSheet.create({
   card: {
     width: '100%',
-    height: 72,
-    backgroundColor: '#FF5252',
-    borderRadius: 36,
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 16,
-    justifyContent: 'space-between',
+    minHeight: 72,
+    borderRadius: 41,
+    borderWidth: 1.5,
+    borderColor: '#888888',
+    overflow: 'hidden',
+    justifyContent: 'center',
+  },
+  cardPendente: {
+    backgroundColor: '#FFFFFF',
+  },
+  cardConcluido: {
+    backgroundColor: '#C6F200',
   },
   pressed: {
-    opacity: 0.9,
-    transform: [{ scale: 0.98 }],
+    opacity: 0.92,
+    transform: [{ scale: 0.99 }],
   },
   disabled: {
     opacity: 0.5,
   },
+  rowContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    justifyContent: 'space-between',
+  },
   iconContainer: {
-    width: 52,
-    height: 52,
-    borderRadius: 26,
-    backgroundColor: '#FFFFFF',
+    width: 56,
+    height: 56,
+    borderRadius: 28,
     alignItems: 'center',
     justifyContent: 'center',
     overflow: 'hidden',
   },
+  iconContainerPendente: {
+    backgroundColor: 'transparent',
+  },
+  iconContainerConcluido: {
+    backgroundColor: '#FFFFFF',
+  },
   iconImage: {
-    width: 38,
-    height: 38,
+    width: 48,
+    height: 48,
   },
   contentContainer: {
     flex: 1,
@@ -91,18 +177,41 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   titleText: {
-    fontSize: 17,
+    fontSize: 16,
     fontWeight: '700',
-    color: '#FFFFFF',
+    letterSpacing: -0.3,
   },
-  actionContainer: {
+  titleTextPendente: {
+    color: '#888888',
+  },
+  titleTextConcluido: {
+    color: '#0F172A',
+  },
+  progressLabel: {
+    fontSize: 14,
+    fontWeight: '700',
     paddingRight: 8,
-    justifyContent: 'center',
-    alignItems: 'center',
   },
-  actionIcon: {
-    fontSize: 22,
-    fontWeight: '800',
-    color: '#FFFFFF',
+  progressTrack: {
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
+    height: 5,
+  },
+  trackPendente: {
+    backgroundColor: '#EFEFEF',
+  },
+  trackConcluido: {
+    backgroundColor: 'rgba(15, 23, 42, 0.14)',
+  },
+  progressFill: {
+    height: '100%',
+  },
+  fillPendente: {
+    backgroundColor: '#C6F200',
+  },
+  fillConcluido: {
+    backgroundColor: '#0F172A',
   },
 });

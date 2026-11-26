@@ -178,8 +178,8 @@ export default function MetaScreen() {
 
             <ThemedView style={styles.cardsContainer}>
               <MetaCard
-                tituloMeta={`Concluir ${metas?.progresso_diario?.meta || 3} atividades hoje`}
-                progresso={`${metas?.progresso_diario?.realizadas || 0}/${metas?.progresso_diario?.meta || 3}`}
+                tituloMeta={`Concluir ${metas?.progresso_diario?.meta || 2} atividades hoje`}
+                progresso={`${metas?.progresso_diario?.realizadas || 0}/${metas?.progresso_diario?.meta || 2}`}
                 concluido={metas?.progresso_diario?.concluido || false}
                 onPress={() => console.log('Meta diária clicada')}
               />

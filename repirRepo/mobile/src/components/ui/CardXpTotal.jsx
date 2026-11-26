@@ -14,7 +14,7 @@ async function fetchUsuarioXp(usuarioId) {
   }
 }
 
-export function CardXpTotal({ usuarioId }) {
+export function CardXpTotal({ usuarioId, refreshKey = 0 }) {
   const [dados, setDados] = useState(null);
   const [loading, setLoading] = useState(true);
   const [erro, setErro] = useState(false);
@@ -25,22 +25,36 @@ export function CardXpTotal({ usuarioId }) {
       return;
     }
 
+    let ativo = true;
+
     async function carregarDados() {
       try {
-        setLoading(true);
+        if (!dados) {
+          setLoading(true);
+        }
         setErro(false);
         const data = await fetchUsuarioXp(usuarioId);
-        setDados(data);
+        if (ativo) {
+          setDados(data);
+        }
       } catch (error) {
         console.error('Erro ao ligar ao backend:', error);
-        setErro(true);
+        if (ativo) {
+          setErro(true);
+        }
       } finally {
-        setLoading(false);
+        if (ativo) {
+          setLoading(false);
+        }
       }
     }
 
     carregarDados();
-  }, [usuarioId]);
+
+    return () => {
+      ativo = false;
+    };
+  }, [usuarioId, refreshKey]);
 
   if (!usuarioId) {
     return (
@@ -50,7 +64,7 @@ export function CardXpTotal({ usuarioId }) {
     );
   }
 
-  if (loading) {
+  if (loading && !dados) {
     return (
       <View style={[styles.card, styles.center]}>
         <ActivityIndicator size="large" color="#FFFFFF" />
