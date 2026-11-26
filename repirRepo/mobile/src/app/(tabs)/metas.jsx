@@ -22,6 +22,24 @@ function normalizarId(valor) {
   return texto;
 }
 
+function formatarTempoRestanteDia(agora = new Date()) {
+  const fimDoDia = new Date(
+    agora.getFullYear(),
+    agora.getMonth(),
+    agora.getDate(),
+    23,
+    59,
+    59,
+    999
+  );
+
+  const diffMs = Math.max(0, fimDoDia.getTime() - agora.getTime());
+  const horas = Math.ceil(diffMs / 3600000);
+  const horasFormatadas = String(horas).padStart(2, '0');
+
+  return `Restam ${horasFormatadas}H`;
+}
+
 export default function MetaScreen() {
   const params = useLocalSearchParams();
   const auth = useAuth?.() || {};
@@ -43,6 +61,17 @@ export default function MetaScreen() {
   const [metas, setMetas] = useState(null);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  const [tempoRestanteDia, setTempoRestanteDia] = useState(() => formatarTempoRestanteDia());
+
+  useEffect(() => {
+    setTempoRestanteDia(formatarTempoRestanteDia());
+
+    const intervalo = setInterval(() => {
+      setTempoRestanteDia(formatarTempoRestanteDia());
+    }, 60000);
+
+    return () => clearInterval(intervalo);
+  }, []);
 
   useEffect(() => {
     let ativo = true;
@@ -66,7 +95,6 @@ export default function MetaScreen() {
     };
   }, [usuarioIdContexto, params?.usuarioId]);
 
-  // Prioriza o ID do contexto de autenticação, depois o storage e por último o parâmetro da rota
   const usuarioId = usuarioIdContexto ?? usuarioIdStorage ?? usuarioIdParam ?? null;
 
   const carregarMetas = useCallback(async ({ isPullToRefresh = false } = {}) => {
@@ -98,6 +126,7 @@ export default function MetaScreen() {
 
   useFocusEffect(
     useCallback(() => {
+      setTempoRestanteDia(formatarTempoRestanteDia());
       carregarMetas({ isPullToRefresh: false });
     }, [carregarMetas])
   );
@@ -107,6 +136,7 @@ export default function MetaScreen() {
   };
 
   const onRefresh = useCallback(async () => {
+    setTempoRestanteDia(formatarTempoRestanteDia());
     await carregarMetas({ isPullToRefresh: true });
   }, [carregarMetas]);
 
@@ -139,9 +169,12 @@ export default function MetaScreen() {
         >
           <ThemedView style={styles.titleContainer}>
             {/* Seção: Metas do Dia */}
-            <ThemedText style={styles.sectionTitle} themeColor="textSecondary">
-              Metas do dia
-            </ThemedText>
+            <View style={styles.sectionHeaderRow}>
+              <ThemedText style={styles.sectionTitle} themeColor="textSecondary">
+                Metas do dia
+              </ThemedText>
+              <Text style={styles.countdownText}>{tempoRestanteDia}</Text>
+            </View>
 
             <ThemedView style={styles.cardsContainer}>
               <MetaCard
@@ -217,10 +250,21 @@ const styles = StyleSheet.create({
     gap: Spacing.two,
     backgroundColor: 'transparent',
   },
-  sectionTitle: {
+  sectionHeaderRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: 8,
     marginTop: Spacing.one,
+  },
+  sectionTitle: {
     fontWeight: '700',
     fontSize: 16,
+  },
+  countdownText: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#888888',
   },
   cardsContainer: {
     gap: Spacing.two,
