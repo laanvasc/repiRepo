@@ -37,6 +37,8 @@ export default function LoginScreen() {
 
                 const usuarioId = response.data.usuario?.id;
 
+                console.log('Login ID:', usuarioId)
+
                 if (!usuarioId) {
                     throw new Error('ID do usuário não retornado pela API.');
                 }

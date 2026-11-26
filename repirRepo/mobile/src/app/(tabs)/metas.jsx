@@ -2,11 +2,11 @@ import { router, useFocusEffect, useLocalSearchParams } from 'expo-router';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { ActivityIndicator, Platform, RefreshControl, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 import HeaderAreaView from '@/components/header-area-view';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
-import CardMetasCompletas from '@/components/ui/CardMetasCompletas';
 import MetaCard from '@/components/ui/MetaCard';
 import { NotificationButton } from '@/components/ui/NotificationButton';
 import { WebBadge } from '@/components/web-badge';
@@ -26,30 +26,9 @@ export default function MetaScreen() {
   const params = useLocalSearchParams();
   const auth = useAuth?.() || {};
 
-  const [usuarioIdStorage, setUsuarioIdStorage] = useState(null);
-  const [metas, setMetas] = useState(null);
-  const [loading, setLoading] = useState(true);
-  const [refreshing, setRefreshing] = useState(false);
-
-  const carregarStorageId = useCallback(async () => {
-    try {
-      const AsyncStorageModule = await import('@react-native-async-storage/async-storage');
-      const AsyncStorage = AsyncStorageModule?.default || AsyncStorageModule;
-      const salvo = await AsyncStorage?.getItem?.('usuarioId');
-      const idLimpo = normalizarId(salvo);
-      if (idLimpo) {
-        setUsuarioIdStorage(idLimpo);
-      }
-      return idLimpo;
-    } catch (err) {
-      console.error('Erro ao ler usuarioId do AsyncStorage em Metas:', err);
-      return null;
-    }
-  }, []);
-
-  useEffect(() => {
-    carregarStorageId();
-  }, [carregarStorageId, params?.usuarioId]);
+  const usuarioIdContexto = normalizarId(
+    auth?.usuarioId ?? auth?.usuario?.id ?? auth?.user?.id ?? null
+  );
 
   const usuarioIdParam = useMemo(() => {
     return (
@@ -60,16 +39,39 @@ export default function MetaScreen() {
     );
   }, [params?.usuarioId, params?.id_usuario, params?.idUsuario]);
 
-  const usuarioIdContexto = normalizarId(
-    auth?.usuarioId ?? auth?.usuario?.id ?? auth?.user?.id ?? null
-  );
+  const [usuarioIdStorage, setUsuarioIdStorage] = useState(null);
+  const [metas, setMetas] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
 
-  const usuarioId = usuarioIdParam ?? usuarioIdStorage ?? usuarioIdContexto ?? null;
+  useEffect(() => {
+    let ativo = true;
+
+    async function carregarStorageId() {
+      try {
+        const salvo = await AsyncStorage.getItem('@usuarioId');
+        const idLimpo = normalizarId(salvo);
+        if (ativo) {
+          setUsuarioIdStorage(idLimpo);
+        }
+      } catch (err) {
+        console.error('Erro ao ler @usuarioId do AsyncStorage em Metas:', err);
+      }
+    }
+
+    carregarStorageId();
+
+    return () => {
+      ativo = false;
+    };
+  }, [usuarioIdContexto, params?.usuarioId]);
+
+  // Prioriza o ID do contexto de autenticação, depois o storage e por último o parâmetro da rota
+  const usuarioId = usuarioIdContexto ?? usuarioIdStorage ?? usuarioIdParam ?? null;
 
   const carregarMetas = useCallback(async ({ isPullToRefresh = false } = {}) => {
-    const idAtual = usuarioId ?? (await carregarStorageId());
-
-    if (!idAtual) {
+    if (!usuarioId) {
+      setMetas(null);
       setLoading(false);
       setRefreshing(false);
       return;
@@ -82,7 +84,7 @@ export default function MetaScreen() {
         setLoading(true);
       }
 
-      const response = await api.get(`/usuarios/${idAtual}/metas-progresso`);
+      const response = await api.get(`/usuarios/${usuarioId}/metas-progresso`);
       setMetas(response.data);
     } catch (err) {
       console.error('Erro ao carregar metas e progresso:', err.response?.data || err.message);
@@ -90,9 +92,9 @@ export default function MetaScreen() {
       setTimeout(() => {
         setLoading(false);
         setRefreshing(false);
-      }, 500);
+      }, 300);
     }
-  }, [usuarioId, carregarStorageId]);
+  }, [usuarioId]);
 
   useFocusEffect(
     useCallback(() => {
@@ -136,14 +138,6 @@ export default function MetaScreen() {
           }
         >
           <ThemedView style={styles.titleContainer}>
-            {/* Card de Progresso Semanal Geral (Carregado dinamicamente do backend) */}
-           
-           {/* AJUSTAR ISSO */}
-            {/* <CardMetasCompletas 
-              realizadas={metas?.progresso_semanal?.realizadas || 0} 
-              meta={metas?.progresso_semanal?.meta || 15} 
-            /> */}
-
             {/* Seção: Metas do Dia */}
             <ThemedText style={styles.sectionTitle} themeColor="textSecondary">
               Metas do dia

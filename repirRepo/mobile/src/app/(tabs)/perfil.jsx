@@ -3,6 +3,7 @@ import { router, useFocusEffect, useLocalSearchParams } from 'expo-router';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { ActivityIndicator, Platform, RefreshControl, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 import HeaderAreaView from '@/components/header-area-view';
 import { ThemedText } from '@/components/themed-text';
@@ -45,32 +46,9 @@ export default function PerfilScreen() {
   const params = useLocalSearchParams();
   const auth = useAuth?.() || {};
 
-  const [usuarioIdStorage, setUsuarioIdStorage] = useState(null);
-  const [nomeUsuario, setNomeUsuario] = useState('Meu Perfil');
-  const [progressoSemanal, setProgressoSemanal] = useState([]);
-  const [conquistas, setConquistas] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [refreshing, setRefreshing] = useState(false);
-
-  const carregarStorageId = useCallback(async () => {
-    try {
-      const AsyncStorageModule = await import('@react-native-async-storage/async-storage');
-      const AsyncStorage = AsyncStorageModule?.default || AsyncStorageModule;
-      const salvo = await AsyncStorage?.getItem?.('usuarioId');
-      const idLimpo = normalizarId(salvo);
-      if (idLimpo) {
-        setUsuarioIdStorage(idLimpo);
-      }
-      return idLimpo;
-    } catch (err) {
-      console.error('Erro ao ler usuarioId do AsyncStorage no Perfil:', err);
-      return null;
-    }
-  }, []);
-
-  useEffect(() => {
-    carregarStorageId();
-  }, [carregarStorageId, params?.usuarioId]);
+  const usuarioIdContexto = normalizarId(
+    auth?.usuarioId ?? auth?.usuario?.id ?? auth?.user?.id ?? null
+  );
 
   const usuarioIdParam = useMemo(() => {
     return (
@@ -81,16 +59,43 @@ export default function PerfilScreen() {
     );
   }, [params?.usuarioId, params?.id_usuario, params?.idUsuario]);
 
-  const usuarioIdContexto = normalizarId(
-    auth?.usuarioId ?? auth?.usuario?.id ?? auth?.user?.id ?? null
-  );
+  const [usuarioIdStorage, setUsuarioIdStorage] = useState(null);
+  const [nomeUsuario, setNomeUsuario] = useState('Meu Perfil');
+  const [progressoSemanal, setProgressoSemanal] = useState([]);
+  const [conquistas, setConquistas] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
 
-  const usuarioId = usuarioIdParam ?? usuarioIdStorage ?? usuarioIdContexto ?? null;
+  useEffect(() => {
+    let ativo = true;
+
+    async function carregarStorageId() {
+      try {
+        const salvo = await AsyncStorage.getItem('@usuarioId');
+        const idLimpo = normalizarId(salvo);
+        if (ativo) {
+          setUsuarioIdStorage(idLimpo);
+        }
+      } catch (err) {
+        console.error('Erro ao ler @usuarioId do AsyncStorage no Perfil:', err);
+      }
+    }
+
+    carregarStorageId();
+
+    return () => {
+      ativo = false;
+    };
+  }, [usuarioIdContexto, params?.usuarioId]);
+
+  // Prioriza o ID do contexto de autenticação, depois o storage e por último o parâmetro da rota
+  const usuarioId = usuarioIdContexto ?? usuarioIdStorage ?? usuarioIdParam ?? null;
 
   const carregarDadosPerfil = useCallback(async ({ isPullToRefresh = false } = {}) => {
-    const idAtual = usuarioId ?? (await carregarStorageId());
-
-    if (!idAtual) {
+    if (!usuarioId) {
+      setNomeUsuario('Meu Perfil');
+      setProgressoSemanal([]);
+      setConquistas([]);
       setLoading(false);
       setRefreshing(false);
       return;
@@ -104,18 +109,18 @@ export default function PerfilScreen() {
       }
 
       // 1. Carregar nome do utilizador
-      const resNome = await api.get(`/usuarios/${idAtual}/nome`);
+      const resNome = await api.get(`/usuarios/${usuarioId}/nome`);
       const nomeCompleto = typeof resNome.data === 'string'
         ? resNome.data
         : (resNome.data?.nome || resNome.data?.nome_usuario || 'Meu Perfil');
       setNomeUsuario(nomeCompleto);
 
       // 2. Carregar progresso semanal real do utilizador
-      const resProgresso = await api.get(`/usuarios/${idAtual}/progresso-semanal`);
+      const resProgresso = await api.get(`/usuarios/${usuarioId}/progresso-semanal`);
       setProgressoSemanal(Array.isArray(resProgresso.data) ? resProgresso.data : []);
 
       // 3. Carregar conquistas / troféus reais do utilizador
-      const resConquistas = await api.get(`/usuarios/${idAtual}/conquistas`);
+      const resConquistas = await api.get(`/usuarios/${usuarioId}/conquistas`);
       setConquistas(Array.isArray(resConquistas.data) ? resConquistas.data : []);
     } catch (err) {
       console.error('Erro ao carregar dados do perfil:', err);
@@ -123,9 +128,9 @@ export default function PerfilScreen() {
       setTimeout(() => {
         setLoading(false);
         setRefreshing(false);
-      }, 500);
+      }, 300);
     }
-  }, [usuarioId, carregarStorageId]);
+  }, [usuarioId]);
 
   useFocusEffect(
     useCallback(() => {
@@ -166,7 +171,7 @@ export default function PerfilScreen() {
           }
         >
           <ThemedView style={styles.cardsWrapper}>
-            <CardXpTotal usuarioId={usuarioId} />
+            {usuarioId ? <CardXpTotal usuarioId={usuarioId} /> : null}
 
             {/* Passando os dados dinâmicos da semana do utilizador logado */}
             <CardProgressoSemanal
@@ -174,7 +179,7 @@ export default function PerfilScreen() {
               dias={progressoSemanal}
             />
 
-            <MensalCard usuarioId={usuarioId} />
+            {usuarioId ? <MensalCard usuarioId={usuarioId} /> : null}
           </ThemedView>
 
           <ThemedView style={styles.sectionsWrapper}>
