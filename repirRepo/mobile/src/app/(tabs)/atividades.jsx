@@ -2,15 +2,25 @@ import { Ionicons } from '@expo/vector-icons';
 import { Image } from 'expo-image';
 import { router, useFocusEffect, useLocalSearchParams } from 'expo-router';
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { ActivityIndicator, Alert, Platform, RefreshControl, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import {
+  ActivityIndicator,
+  Alert,
+  Modal,
+  Platform,
+  RefreshControl,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
+} from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 import HeaderAreaView from '@/components/header-area-view';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
-import AtividadeFrequenteCard from '@/components/ui/AtividadeFrequenteCard';
-import Button from '@/components/ui/Button';
+import CategoriaAtividadeCard from '@/components/ui/CategoriaAtividadeCard';
 import { NotificationButton } from '@/components/ui/NotificationButton';
 import { WebBadge } from '@/components/web-badge';
 
@@ -18,7 +28,6 @@ import { BottomTabInset, MaxContentWidth, Spacing } from '@/constants/theme';
 import { useAuth } from '@/context/AuthContext';
 import { api } from '@/services/api';
 
-// Mapeia getDay() (0 = Domingo ... 6 = Sábado) para a chave booleana e o rótulo do dia
 const MAPA_DIAS_SEMANA = {
   0: { key: 'repete_dom', label: 'Domingo' },
   1: { key: 'repete_seg', label: 'Segunda-feira' },
@@ -29,6 +38,17 @@ const MAPA_DIAS_SEMANA = {
   6: { key: 'repete_sab', label: 'Sábado' },
 };
 
+const MASCOTE_PADRAO = require('@/components/assets/mascote/pose2-mascot2.svg');
+
+const IMAGENS_CATEGORIA = {
+  Corrida: require('@/components/assets/mascote/pose-mascote-corrida.svg'),
+  'Judô': require('@/components/assets/mascote/pose-mascote-judo.svg'),
+  'Jiu-Jitsu': MASCOTE_PADRAO,
+  'Muay Thai': require('@/components/assets/mascote/pose-mascote-muay.svg'),
+  'Natação': require('@/components/assets/mascote/pose-mascote-natacao.svg'),
+  Yoga: require('@/components/assets/mascote/pose-mascote-yoga.svg'),
+};
+
 function normalizarId(valor) {
   if (valor === null || valor === undefined) return null;
   const texto = String(valor).trim();
@@ -36,8 +56,7 @@ function normalizarId(valor) {
   return texto;
 }
 
-// Define categoria exibida, cor de fundo, borda e texto de cada card
-const getCategoryStyle = (item, index = 0) => {
+const getCategoryMeta = (item, index = 0) => {
   const numId = Number(
     item?.categoria_atividade ?? item?.id_categoria ?? item?.categoria
   );
@@ -45,62 +64,62 @@ const getCategoryStyle = (item, index = 0) => {
 
   if (numId === 2) {
     return {
-      bg: '#FF5252',
-      border: '#E03E3E',
-      text: '#FFFFFF',
+      key: 'corrida',
       categoria: 'Corrida',
+      bg: '#FF5D57',
+      imagem: IMAGENS_CATEGORIA.Corrida,
     };
   }
 
   if (numId === 4) {
     return {
-      bg: '#FFA16C',
-      border: '#E8854C',
-      text: '#FFFFFF',
+      key: 'natacao',
       categoria: 'Natação',
+      bg: '#FF5D57',
+      imagem: IMAGENS_CATEGORIA['Natação'],
     };
   }
 
   if (numId === 7) {
     if (nome.includes('jiu')) {
       return {
-        bg: '#F7A8F5',
-        border: '#D982D7',
-        text: '#FFFFFF',
+        key: 'jiu-jitsu',
         categoria: 'Jiu-Jitsu',
+        bg: '#FF5D57',
+        imagem: IMAGENS_CATEGORIA['Jiu-Jitsu'],
       };
     }
     return {
-      bg: '#22C55E',
-      border: '#16A34A',
-      text: '#FFFFFF',
+      key: 'judo',
       categoria: 'Judô',
+      bg: '#FF5D57',
+      imagem: IMAGENS_CATEGORIA['Judô'],
     };
   }
 
   if (numId === 8) {
     return {
-      bg: '#FF5252',
-      border: '#E03E3E',
-      text: '#FFFFFF',
+      key: 'muay-thai',
       categoria: 'Muay Thai',
+      bg: '#FF5D57',
+      imagem: IMAGENS_CATEGORIA['Muay Thai'],
     };
   }
 
   if (numId === 10) {
     return {
-      bg: '#3B82F6',
-      border: '#2563EB',
-      text: '#FFFFFF',
+      key: 'yoga',
       categoria: 'Yoga',
+      bg: '#FF5D57',
+      imagem: IMAGENS_CATEGORIA.Yoga,
     };
   }
 
   const fallback = [
-    { bg: '#FF5252', border: '#E03E3E', text: '#FFFFFF', categoria: 'Corrida' },
-    { bg: '#FFA16C', border: '#E8854C', text: '#FFFFFF', categoria: 'Natação' },
-    { bg: '#22C55E', border: '#16A34A', text: '#FFFFFF', categoria: 'Judô' },
-    { bg: '#3B82F6', border: '#2563EB', text: '#FFFFFF', categoria: 'Yoga' },
+    { key: 'corrida', categoria: 'Corrida', bg: '#FF5D57', imagem: IMAGENS_CATEGORIA.Corrida },
+    { key: 'judo', categoria: 'Judô', bg: '#FF5D57', imagem: IMAGENS_CATEGORIA['Judô'] },
+    { key: 'yoga', categoria: 'Yoga', bg: '#FF5D57', imagem: IMAGENS_CATEGORIA.Yoga },
+    { key: 'natacao', categoria: 'Natação', bg: '#FF5D57', imagem: IMAGENS_CATEGORIA['Natação'] },
   ];
 
   return fallback[Math.abs(Number(index) || 0) % fallback.length];
@@ -127,6 +146,7 @@ export default function AtividadesScreen() {
   const [atividades, setAtividades] = useState([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  const [categoriaSelecionadaKey, setCategoriaSelecionadaKey] = useState(null);
 
   useEffect(() => {
     let ativo = true;
@@ -150,12 +170,11 @@ export default function AtividadesScreen() {
     };
   }, [usuarioIdContexto, params?.usuarioId]);
 
-  // Prioriza o ID do contexto de autenticação, depois o storage e por último o parâmetro da rota
   const usuarioId = usuarioIdContexto ?? usuarioIdStorage ?? usuarioIdParam ?? null;
 
   const diaAtualInfo = useMemo(() => {
     const idxDia = new Date().getDay();
-    return MAPA_DIAS_SEMANA[idxDia] || MAPA_DIAS_SEMANA[3];
+    return MAPA_DIAS_SEMANA[idxDia] || MAPA_DIAS_SEMANA[4];
   }, []);
 
   const refetchAtividades = useCallback(async ({ isPullToRefresh = false } = {}) => {
@@ -193,23 +212,59 @@ export default function AtividadesScreen() {
     refetchAtividades({ isPullToRefresh: true });
   }, [refetchAtividades]);
 
-  const handleFinalizarAtividades = async () => {
-    if (!usuarioId) return;
-
-    try {
-      await api.post(`/usuarios/${usuarioId}/atualizar-ofensiva`);
-      await refetchAtividades({ isPullToRefresh: true });
-      Alert.alert('Sucesso', 'Atividades diárias registadas com sucesso!');
-    } catch (err) {
-      console.error('Erro ao finalizar atividades:', err);
-      Alert.alert('Erro', 'Não foi possível concluir as atividades.');
-    }
-  };
-
-  // Filtra apenas as atividades frequentes agendadas para o dia da semana atual
   const atividadesDoDia = useMemo(() => {
     return atividades.filter((item) => Boolean(item?.[diaAtualInfo.key]) === true);
   }, [atividades, diaAtualInfo.key]);
+
+  const categoriasDoDia = useMemo(() => {
+    const mapa = new Map();
+
+    atividadesDoDia.forEach((item, index) => {
+      const meta = getCategoryMeta(item, index);
+      if (!mapa.has(meta.key)) {
+        mapa.set(meta.key, {
+          key: meta.key,
+          titulo: meta.categoria,
+          corFundo: meta.bg,
+          imagem: meta.imagem,
+          concluidas: 0,
+          total: 0,
+          itens: [],
+        });
+      }
+
+      const grupo = mapa.get(meta.key);
+      grupo.total += 1;
+      if (Boolean(item?.realizada_hoje)) {
+        grupo.concluidas += 1;
+      }
+      grupo.itens.push(item);
+    });
+
+    return Array.from(mapa.values());
+  }, [atividadesDoDia]);
+
+  const categoriaAberta = useMemo(() => {
+    if (!categoriaSelecionadaKey) return null;
+    return categoriasDoDia.find((c) => c.key === categoriaSelecionadaKey) || null;
+  }, [categoriasDoDia, categoriaSelecionadaKey]);
+
+  function handleAbrirAtividade(item) {
+    if (Boolean(item?.realizada_hoje)) {
+      Alert.alert('Atividade concluída', 'Você já concluiu esta atividade hoje.');
+      return;
+    }
+
+    setCategoriaSelecionadaKey(null);
+    router.push({
+      pathname: '/registrarAtividade',
+      params: {
+        id_atividade: item.id_atividade,
+        nome_atividade: item.nome_atividade,
+        horario: item.horario || 'Horário flexível',
+      },
+    });
+  }
 
   return (
     <ThemedView style={styles.container}>
@@ -250,39 +305,20 @@ export default function AtividadesScreen() {
               {diaAtualInfo.label}
             </ThemedText>
 
-            {atividadesDoDia.length > 0 ? (
-              atividadesDoDia.map((item, index) => {
-                const catStyle = getCategoryStyle(item, index);
-
-                return (
-                  <AtividadeFrequenteCard
-                    key={item.id_atividade_frequente}
-                    titulo={item.nome_atividade}
-                    horario={item.horario}
-                    categoria={catStyle.categoria}
-                    concluida={item.realizada_hoje}
-                    cardStyle={{
-                      backgroundColor: catStyle.bg,
-                      borderColor: catStyle.border,
-                    }}
-                    textColor={catStyle.text}
-                    onPress={() => {
-                      if (item.realizada_hoje) {
-                        return;
-                      }
-
-                      router.push({
-                        pathname: '/registrarAtividade',
-                        params: {
-                          id_atividade: item.id_atividade,
-                          nome_atividade: item.nome_atividade,
-                          horario: item.horario || 'Horário flexível',
-                        },
-                      });
-                    }}
+            {categoriasDoDia.length > 0 ? (
+              <View style={styles.grid}>
+                {categoriasDoDia.map((cat) => (
+                  <CategoriaAtividadeCard
+                    key={cat.key}
+                    titulo={cat.titulo}
+                    concluidas={cat.concluidas}
+                    total={cat.total}
+                    corFundo={cat.corFundo}
+                    imagem={cat.imagem}
+                    onPress={() => setCategoriaSelecionadaKey(cat.key)}
                   />
-                );
-              })
+                ))}
+              </View>
             ) : (
               <Text style={styles.emptyText}>
                 Nenhuma atividade agendada para {diaAtualInfo.label.toLowerCase()}.
@@ -297,7 +333,65 @@ export default function AtividadesScreen() {
           {Platform.OS === 'web' && <WebBadge />}
         </ScrollView>
 
-        {/* OVERLAY DE CARREGAMENTO DE TELA INTEIRA */}
+        <Modal
+          visible={Boolean(categoriaAberta)}
+          transparent
+          animationType="fade"
+          onRequestClose={() => setCategoriaSelecionadaKey(null)}
+        >
+          <View style={styles.modalBackdrop}>
+            <View style={styles.modalCard}>
+              <View style={styles.modalHeader}>
+                <View>
+                  <Text style={styles.modalTitle}>{categoriaAberta?.titulo}</Text>
+                  <Text style={styles.modalSubtitle}>
+                    {categoriaAberta?.concluidas ?? 0} de {categoriaAberta?.total ?? 0} concluídas hoje
+                  </Text>
+                </View>
+
+                <TouchableOpacity
+                  onPress={() => setCategoriaSelecionadaKey(null)}
+                  hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+                >
+                  <Ionicons name="close" size={24} color="#0F172A" />
+                </TouchableOpacity>
+              </View>
+
+              <ScrollView style={styles.modalList} showsVerticalScrollIndicator={false}>
+                {categoriaAberta?.itens?.map((item) => {
+                  const concluida = Boolean(item?.realizada_hoje);
+                  return (
+                    <TouchableOpacity
+                      key={item.id_atividade_frequente}
+                      style={[
+                        styles.atividadeItem,
+                        concluida && styles.atividadeItemConcluida,
+                      ]}
+                      onPress={() => handleAbrirAtividade(item)}
+                      activeOpacity={0.8}
+                    >
+                      <View style={styles.atividadeInfo}>
+                        <Text style={styles.atividadeNome}>
+                          {item.nome_atividade || 'Atividade'}
+                        </Text>
+                        <Text style={styles.atividadeStatus}>
+                          {concluida ? 'Concluída hoje' : 'Toque para registrar'}
+                        </Text>
+                      </View>
+
+                      <Ionicons
+                        name={concluida ? 'checkmark-circle' : 'chevron-forward'}
+                        size={22}
+                        color={concluida ? '#16A34A' : '#FF5D57'}
+                      />
+                    </TouchableOpacity>
+                  );
+                })}
+              </ScrollView>
+            </View>
+          </View>
+        </Modal>
+
         {loading && (
           <View style={styles.overlayCarregamento}>
             <ActivityIndicator size="large" color="#FF5733" />
@@ -335,37 +429,20 @@ const styles = StyleSheet.create({
     paddingBottom: BottomTabInset + Spacing.five,
   },
   cardsContainer: {
-    gap: Spacing.two,
+    gap: Spacing.three,
     backgroundColor: 'transparent',
     width: '100%',
   },
   diaTitle: {
-    fontSize: 16,
-    fontWeight: '700',
+    fontSize: 22,
+    fontWeight: '800',
+    color: '#000000',
   },
-  addBottomButton: {
+  grid: {
     flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 8,
-    paddingVertical: 14,
-    borderRadius: 12,
-    borderWidth: 1.5,
-    borderColor: '#FF5733',
-    borderStyle: 'dashed',
-    backgroundColor: 'transparent',
-    width: '100%',
-    marginTop: Spacing.one,
-  },
-  addBottomButtonText: {
-    fontSize: 15,
-    fontWeight: '600',
-    color: '#FF5733',
-  },
-  buttonContainer: {
-    backgroundColor: 'transparent',
-    marginTop: Spacing.one,
-    width: '100%',
+    flexWrap: 'wrap',
+    justifyContent: 'space-between',
+    rowGap: 14,
   },
   emptyText: {
     textAlign: 'center',
@@ -385,6 +462,68 @@ const styles = StyleSheet.create({
     fontSize: 13,
     color: '#888888',
     opacity: 0.8,
+  },
+  modalBackdrop: {
+    flex: 1,
+    backgroundColor: 'rgba(15, 23, 42, 0.45)',
+    justifyContent: 'center',
+    padding: 20,
+  },
+  modalCard: {
+    backgroundColor: '#FFF7FF',
+    borderRadius: 24,
+    padding: 20,
+    maxHeight: '75%',
+  },
+  modalHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
+    marginBottom: 14,
+  },
+  modalTitle: {
+    fontSize: 20,
+    fontWeight: '800',
+    color: '#0F172A',
+  },
+  modalSubtitle: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: '#475569',
+    marginTop: 2,
+  },
+  modalList: {
+    maxHeight: 320,
+  },
+  atividadeItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    backgroundColor: '#FFFFFF',
+    borderRadius: 16,
+    padding: 14,
+    marginBottom: 10,
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+  },
+  atividadeItemConcluida: {
+    backgroundColor: '#F0FDF4',
+    borderColor: '#BBF7D0',
+  },
+  atividadeInfo: {
+    flex: 1,
+    marginRight: 10,
+  },
+  atividadeNome: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: '#0F172A',
+  },
+  atividadeStatus: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#64748B',
+    marginTop: 2,
   },
   overlayCarregamento: {
     position: 'absolute',

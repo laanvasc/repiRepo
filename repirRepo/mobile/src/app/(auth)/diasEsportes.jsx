@@ -410,9 +410,9 @@ export default function DiasEsportesScreen() {
               </Text>
             </TouchableOpacity>
 
-            <Pressable onPress={handlePular} style={styles.skipButton}>
+            {/* <Pressable onPress={handlePular} style={styles.skipButton}>
               <Text style={styles.skipButtonText}>Pular</Text>
-            </Pressable>
+            </Pressable> */}
           </View>
         </View>
       </ScrollView>
@@ -439,7 +439,7 @@ const styles = StyleSheet.create({
   bannerCard: {
     width: '100%',
     height: 155,
-    backgroundColor: '#F46A41',
+    backgroundColor: '#D6EC17',
     borderRadius: 24,
     overflow: 'hidden',
     justifyContent: 'center',

@@ -8,6 +8,9 @@ import {
 } from '@expo-google-fonts/inter';
 import { api } from '../../services/api';
 
+const MASCOTE_OFENSIVA_ATIVA = require('@/components/assets/mascote/pose1-mascot1.svg');
+const MASCOTE_OFENSIVA_ZERADA = require('@/components/assets/mascote/pose-chorando.svg');
+
 async function fetchDadosOfensiva(usuarioId) {
   const [resOfensiva, resAtividades] = await Promise.all([
     api.get(`/usuarios/${usuarioId}/ofensiva`),
@@ -86,6 +89,8 @@ export function CardOfensiva({ usuarioId }) {
 
   // Só mantém a ofensiva ativa visível se o utilizador tiver concluído ao menos 1 atividade hoje
   const diasOfensiva = dados.concluiuAlgumaHoje ? (dados.ofensivaAtual ?? 0) : 0;
+  const isZerada = diasOfensiva === 0;
+  const fonteMascote = isZerada ? MASCOTE_OFENSIVA_ZERADA : MASCOTE_OFENSIVA_ATIVA;
 
   return (
     <ImageBackground
@@ -101,9 +106,9 @@ export function CardOfensiva({ usuarioId }) {
 
       <View style={styles.rightContent}>
         <Image
-          source={require('@/components/assets/mascote/pose1-mascot1.svg')}
+          source={fonteMascote}
           contentFit="contain"
-          style={styles.mascot}
+          style={[styles.mascot, isZerada && styles.mascotChorando]}
         />
       </View>
     </ImageBackground>
@@ -155,11 +160,17 @@ const styles = StyleSheet.create({
     fontFamily: 'Inter_600SemiBold',
   },
   rightContent: {
+    width: 140,
+    height: 140,
     alignItems: 'center',
     justifyContent: 'center',
+    overflow: 'visible',
   },
   mascot: {
     width: 140,
     height: 140,
+  },
+  mascotChorando: {
+    transform: [{ scale: 1.25 }],
   },
 });

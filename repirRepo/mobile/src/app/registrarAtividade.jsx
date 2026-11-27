@@ -1,7 +1,17 @@
 import { Ionicons } from '@expo/vector-icons';
 import { router, useLocalSearchParams } from 'expo-router';
-import { useMemo, useState } from 'react';
-import { Alert, Platform, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import { useEffect, useMemo, useRef, useState } from 'react';
+import {
+  Alert,
+  Animated,
+  Platform,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View,
+} from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import HeaderAreaView from '@/components/header-area-view';
@@ -45,6 +55,39 @@ export default function RegistrarAtividadeScreen() {
   const [intensidade, setIntensidade] = useState('Moderado'); // 'Leve' | 'Moderado' | 'Intenso'
   const [observacao, setObservacao] = useState('');
   const [loading, setLoading] = useState(false);
+  const [sucessoBanner, setSucessoBanner] = useState(null);
+
+  const bannerAnim = useRef(new Animated.Value(0)).current;
+  const timeoutRef = useRef(null);
+
+  useEffect(() => {
+    return () => {
+      if (timeoutRef.current) {
+        clearTimeout(timeoutRef.current);
+      }
+    };
+  }, []);
+
+  const mostrarBannerSucesso = (mensagem) => {
+    setSucessoBanner(mensagem);
+    bannerAnim.setValue(0);
+
+    Animated.timing(bannerAnim, {
+      toValue: 1,
+      duration: 220,
+      useNativeDriver: true,
+    }).start();
+
+    timeoutRef.current = setTimeout(() => {
+      Animated.timing(bannerAnim, {
+        toValue: 0,
+        duration: 180,
+        useNativeDriver: true,
+      }).start(() => {
+        router.back();
+      });
+    }, 1200);
+  };
 
   const handleConcluir = async () => {
     if (!usuarioId || !idAtividade) {
@@ -63,19 +106,39 @@ export default function RegistrarAtividadeScreen() {
         xp_ganho: xpCalculado,
       });
 
-      Alert.alert('Sucesso!', `Atividade registada com sucesso! +${xpCalculado} XP`, [
-        { text: 'OK', onPress: () => router.back() },
-      ]);
+      mostrarBannerSucesso(`Atividade registrada com sucesso! +${xpCalculado} XP`);
     } catch (err) {
       console.error('Erro ao registar atividade:', err.response?.data || err.message);
       Alert.alert('Erro', 'Não foi possível concluir o registo da atividade.');
-    } finally {
       setLoading(false);
     }
   };
 
   return (
     <ThemedView style={styles.container}>
+      {sucessoBanner ? (
+        <Animated.View
+          pointerEvents="none"
+          style={[
+            styles.toastSucesso,
+            {
+              opacity: bannerAnim,
+              transform: [
+                {
+                  translateY: bannerAnim.interpolate({
+                    inputRange: [0, 1],
+                    outputRange: [-24, 0],
+                  }),
+                },
+              ],
+            },
+          ]}
+        >
+          <Ionicons name="checkmark-circle" size={22} color="#FFFFFF" />
+          <Text style={styles.toastSucessoText}>{sucessoBanner}</Text>
+        </Animated.View>
+      ) : null}
+
       <SafeAreaView style={styles.safeArea} edges={['top', 'left', 'right']}>
         <ThemedView style={styles.headerContainer}>
           <HeaderAreaView title="Registrar Atividade" />
@@ -171,6 +234,31 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: 'center',
     flexDirection: 'row',
+  },
+  toastSucesso: {
+    position: 'absolute',
+    top: Platform.OS === 'ios' ? 56 : 36,
+    left: 20,
+    right: 20,
+    zIndex: 999,
+    backgroundColor: '#16A34A',
+    borderRadius: 16,
+    paddingVertical: 14,
+    paddingHorizontal: 16,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    shadowColor: '#000000',
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.16,
+    shadowRadius: 12,
+    elevation: 8,
+  },
+  toastSucessoText: {
+    flex: 1,
+    color: '#FFFFFF',
+    fontSize: 15,
+    fontWeight: '700',
   },
   safeArea: {
     flex: 1,
