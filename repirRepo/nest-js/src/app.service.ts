@@ -133,16 +133,20 @@ export class AppService {
     return notificacoes;
   }
 
-  async getProximaAtividade(id: number) {
+
+async getProximaAtividade(id: number) {
     const idBigInt = this.validarId(id);
 
     const atividadesFrequentes = await this.prisma.atividade_frequente.findMany({
       where: { id_usuario: Number(idBigInt) },
-      include: { atividade: true },
+      orderBy: { id_atividade_frequente: 'asc' },
     });
 
     if (!atividadesFrequentes || atividadesFrequentes.length === 0) {
-      return { status: 'vazio', mensagem: 'Nenhuma atividade frequente cadastrada' };
+      return {
+        status: 'vazio',
+        mensagem: 'Nenhuma atividade cadastrada',
+      };
     }
 
     const hoje = new Date();
@@ -150,21 +154,32 @@ export class AppService {
 
     const verificarDiaHoje = (item: any): boolean => {
       switch (diaSemana) {
-        case 0: return item.repete_dom === true;
-        case 1: return item.repete_seg === true;
-        case 2: return item.repete_ter === true;
-        case 3: return item.repete_qua === true;
-        case 4: return item.repete_qui === true;
-        case 5: return item.repete_sex === true;
-        case 6: return item.repete_sab === true;
-        default: return false;
+        case 0:
+          return item.repete_dom === true;
+        case 1:
+          return item.repete_seg === true;
+        case 2:
+          return item.repete_ter === true;
+        case 3:
+          return item.repete_qua === true;
+        case 4:
+          return item.repete_qui === true;
+        case 5:
+          return item.repete_sex === true;
+        case 6:
+          return item.repete_sab === true;
+        default:
+          return false;
       }
     };
 
     const agendadasHoje = atividadesFrequentes.filter(verificarDiaHoje);
 
     if (agendadasHoje.length === 0) {
-      return { status: 'sem_atividades_hoje', mensagem: 'Nenhuma atividade para hoje' };
+      return {
+        status: 'sem_atividades_hoje',
+        mensagem: 'Nenhuma atividade para hoje',
+      };
     }
 
     const inicioHoje = new Date();
@@ -186,35 +201,46 @@ export class AppService {
     });
 
     if (pendentes.length === 0) {
-      return { status: 'todas_concluidas', nome: 'Todas as atividades concluídas!' };
+      return {
+        status: 'todas_concluidas',
+        nome: 'Todas as atividades concluídas!',
+      };
     }
 
-    const minutosAtuais = hoje.getHours() * 60 + hoje.getMinutes();
+    const proxima = pendentes[0];
 
-    const comMinutos = pendentes.map((item) => {
-      let horarioStr = String(item.horario || '00:00');
-      if (horarioStr.includes('T')) {
-        const partes = horarioStr.split('T')[1];
-        horarioStr = partes ? partes.split('.')[0] : '00:00';
+    let nomeAtividade = 'Atividade';
+    let categoriaAtividade: number | null = null;
+
+    if (proxima.id_atividade !== null && proxima.id_atividade !== undefined) {
+      const atividadeMestre = await this.prisma.atividades.findFirst({
+        where: { id_atividade: proxima.id_atividade },
+        select: {
+          nome_atividade: true,
+          categoria_atividade: true,
+        },
+      });
+
+      if (atividadeMestre?.nome_atividade) {
+        nomeAtividade = atividadeMestre.nome_atividade;
       }
-      const [h, m] = horarioStr.split(':').map(Number);
-      return {
-        ...item,
-        totalMinutos: (h || 0) * 60 + (m || 0),
-        nome_atividade: item.atividade?.nome_atividade || 'Atividade',
-      };
-    });
 
-    comMinutos.sort((a, b) => a.totalMinutos - b.totalMinutos);
-
-    const proxima = comMinutos.find((i) => i.totalMinutos >= minutosAtuais) || comMinutos[0];
+      if (
+        atividadeMestre?.categoria_atividade !== null &&
+        atividadeMestre?.categoria_atividade !== undefined
+      ) {
+        categoriaAtividade = Number(atividadeMestre.categoria_atividade);
+      }
+    }
 
     return {
       status: 'pendente',
-      nome: proxima.nome_atividade,
-      horario: proxima.horario,
+      id_atividade: proxima.id_atividade ? Number(proxima.id_atividade) : null,
+      nome: nomeAtividade,
+      categoria_atividade: categoriaAtividade,
     };
   }
+
 
   async getDestaquesSemanais(id: number) {
     const idBigInt = this.validarId(id);
@@ -813,7 +839,7 @@ async calcularMetasProgresso(usuarioId: number) {
     return ofensiva;
   }
 
-  async calcularProgressoSemanal(usuarioId: number) {
+async calcularProgressoSemanal(usuarioId: number) {
     const idBigInt = this.validarId(usuarioId);
 
     const usuario = await this.prisma.usuario.findUnique({
@@ -824,7 +850,20 @@ async calcularMetasProgresso(usuarioId: number) {
       throw new Error('Utilizador não encontrado');
     }
 
-    const metaDiariaPadrao = 3;
+    const frequenciasUsuario = await this.prisma.atividade_frequente.findMany({
+      where: { id_usuario: Number(idBigInt) },
+    });
+
+    // Ordem começa na Segunda-feira (i = 0) até Domingo (i = 6)
+    const camposRepeticaoSemana = [
+      'repete_seg',
+      'repete_ter',
+      'repete_qua',
+      'repete_qui',
+      'repete_sex',
+      'repete_sab',
+      'repete_dom',
+    ] as const;
 
     const agora = new Date();
     const diaSemana = agora.getDay();
@@ -835,6 +874,7 @@ async calcularMetasProgresso(usuarioId: number) {
     inicioSemana.setHours(0, 0, 0, 0);
 
     const diasDaSemana = ['S', 'T', 'Q', 'Q', 'S', 'S', 'D'];
+    const hoje = new Date();
     const resultadoDias = [];
 
     for (let i = 0; i < 7; i++) {
@@ -843,6 +883,11 @@ async calcularMetasProgresso(usuarioId: number) {
 
       const proximoDia = new Date(diaAtual);
       proximoDia.setDate(diaAtual.getDate() + 1);
+
+      const campoDia = camposRepeticaoSemana[i];
+      const totalAtividadesDia = frequenciasUsuario.filter(
+        (item: any) => Boolean(item?.[campoDia]) === true
+      ).length;
 
       const realizadas = await this.prisma.usuario_atividades.count({
         where: {
@@ -854,13 +899,13 @@ async calcularMetasProgresso(usuarioId: number) {
         },
       });
 
-      const hoje = new Date();
       const éHoje = diaAtual.toDateString() === hoje.toDateString();
 
       resultadoDias.push({
         dia: diasDaSemana[i],
         atividadesFeitas: realizadas,
-        metaDiaria: metaDiariaPadrao,
+        totalAtividadesDia,
+        metaDiaria: totalAtividadesDia,
         atual: éHoje,
       });
     }

@@ -2,17 +2,54 @@ import { useEffect, useState } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 import { api } from '@/services/api';
 
+function normalizarListaDias(valor) {
+  if (!Array.isArray(valor)) return [];
+  return valor.filter(Boolean);
+}
+
+function obterTotalAtividadesDia(item) {
+  if (!item || typeof item !== 'object') return 0;
+
+  const candidatos = [
+    item.totalAtividadesDia,
+    item.total_atividades_dia,
+    item.totalAtividades,
+    item.total_atividades,
+    item.quantidadeAtividades,
+    item.quantidade_atividades,
+    item.metaDiaria,
+    item.meta_diaria,
+  ];
+
+  for (const valor of candidatos) {
+    const num = Number(valor);
+    if (Number.isFinite(num) && num >= 0) {
+      return num;
+    }
+  }
+
+  if (Array.isArray(item.atividades)) {
+    return item.atividades.length;
+  }
+
+  if (Array.isArray(item.itens)) {
+    return item.itens.length;
+  }
+
+  return 0;
+}
+
 export function CardProgressoSemanal({
   titulo = 'Progresso Semanal',
   dias = [],
   usuarioId,
   refreshKey = 0,
 }) {
-  const [diasInternos, setDiasInternos] = useState(Array.isArray(dias) ? dias : []);
+  const [diasInternos, setDiasInternos] = useState(() => normalizarListaDias(dias));
 
   useEffect(() => {
     if (Array.isArray(dias)) {
-      setDiasInternos(dias);
+      setDiasInternos(normalizarListaDias(dias));
     }
   }, [dias, refreshKey]);
 
@@ -25,7 +62,7 @@ export function CardProgressoSemanal({
       try {
         const res = await api.get(`/usuarios/${usuarioId}/progresso-semanal`);
         if (ativo && Array.isArray(res.data)) {
-          setDiasInternos(res.data);
+          setDiasInternos(normalizarListaDias(res.data));
         }
       } catch (err) {
         console.error('Erro ao atualizar progresso semanal:', err);
@@ -39,7 +76,7 @@ export function CardProgressoSemanal({
     };
   }, [usuarioId, refreshKey]);
 
-  const listaDias = Array.isArray(diasInternos) ? diasInternos : [];
+  const listaDias = normalizarListaDias(diasInternos);
 
   return (
     <View style={styles.card}>
@@ -47,26 +84,29 @@ export function CardProgressoSemanal({
 
       <View style={styles.diasContainer}>
         {listaDias.map((item, index) => {
-          const meta = item.metaDiaria > 0 ? item.metaDiaria : 3;
-          const realizadas = Math.max(item.atividadesFeitas || 0, 0);
-
-          const percentual = Math.min(Math.max(realizadas / meta, 0), 1) * 100;
+          const totalDoDia = obterTotalAtividadesDia(item);
+          const realizadas = Math.max(Number(item?.atividadesFeitas) || 0, 0);
+          const percentual =
+            totalDoDia > 0
+              ? Math.min(Math.max(realizadas / totalDoDia, 0), 1) * 100
+              : 0;
+          const chaveDia = `${item?.id ?? item?.dia ?? 'dia'}-${index}`;
 
           return (
-            <View key={item.id || item.dia || index} style={styles.pillBackground}>
+            <View key={chaveDia} style={styles.pillBackground}>
               {/* Preenchimento dinâmico de baixo para cima */}
-              {percentual > 0 && (
+              {percentual > 0 ? (
                 <View
                   style={[
                     styles.pillFill,
                     { height: `${percentual}%` },
                   ]}
                 />
-              )}
+              ) : null}
 
               {/* Letra do dia da semana */}
-              <Text style={[styles.diaText, item.atual && styles.diaAtualText]}>
-                {item.dia}
+              <Text style={[styles.diaText, item?.atual && styles.diaAtualText]}>
+                {item?.dia ?? ''}
               </Text>
             </View>
           );

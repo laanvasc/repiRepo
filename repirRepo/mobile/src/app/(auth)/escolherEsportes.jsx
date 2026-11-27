@@ -16,6 +16,7 @@ const ESPORTES = [
     bg: '#F7D6F0',
     checkBg: '#FF5E32',
     imagem: require('@/components/assets/mascote/pose-mascote-judo.svg'),
+    styleKey: 'mascotJudo',
   },
   {
     id: 'corrida',
@@ -23,6 +24,7 @@ const ESPORTES = [
     bg: '#C6F200',
     checkBg: '#FF5E32',
     imagem: require('@/components/assets/mascote/pose-mascote-corrida.svg'),
+    styleKey: 'mascotCorrida',
   },
   {
     id: 'yoga',
@@ -30,6 +32,7 @@ const ESPORTES = [
     bg: '#FFA4A4',
     checkBg: '#FF5E32',
     imagem: require('@/components/assets/mascote/pose-mascote-yoga.svg'),
+    styleKey: 'mascotYoga',
   },
   {
     id: 'muay-thai',
@@ -37,6 +40,7 @@ const ESPORTES = [
     bg: '#FFA4A4',
     checkBg: '#FF5E32',
     imagem: require('@/components/assets/mascote/pose-mascote-muay.svg'),
+    styleKey: 'mascotMuayThai',
   },
   {
     id: 'natacao',
@@ -44,14 +48,16 @@ const ESPORTES = [
     bg: '#F7D6F0',
     checkBg: '#FF5E32',
     imagem: require('@/components/assets/mascote/pose-mascote-natacao.svg'),
+    styleKey: 'mascotNatacao',
   },
-  {
-    id: 'jiu-jitsu',
-    nome: 'Jiu-Jitsu',
-    bg: '#C6F200',
-    checkBg: '#FF5E32',
-    imagem: MASCOTE_FALLBACK,
-  },
+  // {
+  //   id: 'jiu-jitsu',
+  //   nome: 'Jiu-Jitsu',
+  //   bg: '#C6F200',
+  //   checkBg: '#FF5E32',
+  //   imagem: MASCOTE_FALLBACK,
+  //   styleKey: 'mascotJiuJitsu',
+  // },
 ];
 
 function extrairIdDeValor(valor) {
@@ -168,7 +174,7 @@ export default function EscolherEsportesScreen() {
 
     const esportesEscolhidos = ESPORTES
       .filter((item) => selecionados.includes(item.id))
-      .map(({ imagem: _imagem, ...resto }) => resto);
+      .map(({ imagem: _imagem, styleKey: _styleKey, ...resto }) => resto);
 
     router.push({
       pathname: '/(auth)/diasEsportes',
@@ -215,6 +221,7 @@ export default function EscolherEsportesScreen() {
           <View style={styles.grid}>
             {ESPORTES.map((esporte) => {
               const ativo = selecionados.includes(esporte.id);
+              const estiloEspecifico = styles[esporte.styleKey];
               return (
                 <TouchableOpacity
                   key={esporte.id}
@@ -230,11 +237,13 @@ export default function EscolherEsportesScreen() {
                     {ativo && <View style={styles.radioInnerDot} />}
                   </View>
 
-                  <Image
-                    source={esporte.imagem || MASCOTE_FALLBACK}
-                    style={styles.cardMascot}
-                    contentFit="contain"
-                  />
+                  <View style={styles.cardMascotWrapper}>
+                    <Image
+                      source={esporte.imagem || MASCOTE_FALLBACK}
+                      style={[styles.cardMascot, estiloEspecifico]}
+                      contentFit="contain"
+                    />
+                  </View>
 
                   <Text style={styles.cardTitle}>{esporte.nome}</Text>
                 </TouchableOpacity>
@@ -360,10 +369,36 @@ const styles = StyleSheet.create({
     borderRadius: 4.5,
     backgroundColor: '#D2F500',
   },
+  cardMascotWrapper: {
+    width: 112,
+    height: 112,
+    alignItems: 'center',
+    justifyContent: 'center',
+    overflow: 'visible',
+    marginTop: -6,
+  },
   cardMascot: {
     width: 112,
     height: 112,
-    marginTop: -6,
+  },
+  // Estilos individuais por esporte — ajuste livremente cada um:
+  mascotJudo: {
+    transform: [{ scale: 1.5 }, { translateX: 0 }, { translateY: 0 }],
+  },
+  mascotCorrida: {
+    transform: [{ scale: 1.20 }, { translateX: 0 }, { translateY: 0 }],
+  },
+  mascotYoga: {
+    transform: [{ scale: 1.20 }, { translateX: 0 }, { translateY: 0 }],
+  },
+  mascotMuayThai: {
+    transform: [{ scale: 1.5 }, { translateX: 0 }, { translateY: 0 }],
+  },
+  mascotNatacao: {
+    transform: [{ scale: 1.20 }, { translateX: 0 }, { translateY: 0 }],
+  },
+  mascotJiuJitsu: {
+    transform: [{ scale: 1 }, { translateX: 0 }, { translateY: 0 }],
   },
   cardTitle: {
     fontSize: 18,

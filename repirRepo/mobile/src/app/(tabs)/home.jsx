@@ -20,11 +20,42 @@ import CardOfensiva from '../../components/ui/CardOfensiva';
 
 import { useAuth } from '@/context/AuthContext';
 
+const MINIMO_XP_DESTAQUES = 100;
+
 function normalizarId(valor) {
   if (valor === null || valor === undefined) return null;
   const texto = String(valor).trim();
   if (!texto || texto === 'undefined' || texto === 'null') return null;
   return texto;
+}
+
+function extrairXpUsuario(fonte) {
+  if (!fonte || typeof fonte !== 'object') return 0;
+
+  if (Array.isArray(fonte)) {
+    const somaDias = fonte.reduce((acc, item) => {
+      const valorDia = Number(item?.xp ?? item?.xpGanho ?? item?.xp_ganho ?? 0);
+      return acc + (Number.isFinite(valorDia) ? valorDia : 0);
+    }, 0);
+    return somaDias;
+  }
+
+  const candidato =
+    fonte.xpTotal ??
+    fonte.xp_total ??
+    fonte.totalXp ??
+    fonte.total_xp ??
+    fonte.xp ??
+    fonte.pontos ??
+    fonte.usuario?.xpTotal ??
+    fonte.usuario?.xp_total ??
+    fonte.usuario?.xp ??
+    fonte.user?.xpTotal ??
+    fonte.user?.xp ??
+    0;
+
+  const numero = Number(candidato);
+  return Number.isFinite(numero) ? numero : 0;
 }
 
 export default function HomeScreen() {
@@ -72,10 +103,22 @@ export default function HomeScreen() {
   // depois o storage sincronizado e por último o parâmetro da rota
   const usuarioId = usuarioIdContexto ?? usuarioIdStorage ?? usuarioIdParam ?? null;
 
+  const xpContexto = useMemo(
+    () => extrairXpUsuario(auth?.usuario ?? auth?.user ?? auth),
+    [auth]
+  );
+
   const [primeiroNome, setPrimeiroNome] = useState('Usuário');
+  const [xpUsuario, setXpUsuario] = useState(xpContexto);
   const [refreshing, setRefreshing] = useState(false);
   const [dadosCarregando, setDadosCarregando] = useState(true);
   const [refreshKey, setRefreshKey] = useState(0);
+
+  useEffect(() => {
+    if (xpContexto > 0) {
+      setXpUsuario(xpContexto);
+    }
+  }, [xpContexto]);
 
   const carregarNomeUsuario = useCallback(async (idAlvo) => {
     if (!idAlvo) return;
@@ -85,14 +128,39 @@ export default function HomeScreen() {
         ? response.data
         : (response.data?.nome || response.data?.nome_usuario || 'Usuário');
       setPrimeiroNome(nomeCompleto.trim().split(' ')[0]);
+
+      const xpNoNome = extrairXpUsuario(response.data);
+      if (xpNoNome > 0) {
+        setXpUsuario(xpNoNome);
+      }
     } catch (err) {
       console.error('Erro ao buscar o nome:', err);
+    }
+  }, []);
+
+  const carregarXpUsuario = useCallback(async (idAlvo) => {
+    if (!idAlvo) return;
+    try {
+      const resXp = await api.get(`/usuarios/${idAlvo}/xp`).catch(() => null);
+      if (resXp?.data !== null && resXp?.data !== undefined) {
+        const valor = typeof resXp.data === 'number' ? resXp.data : extrairXpUsuario(resXp.data);
+        setXpUsuario(valor);
+        return;
+      }
+
+      const resProgresso = await api.get(`/usuarios/${idAlvo}/progresso-semanal`).catch(() => null);
+      if (resProgresso?.data !== null && resProgresso?.data !== undefined) {
+        setXpUsuario(extrairXpUsuario(resProgresso.data));
+      }
+    } catch {
+      // mantém o valor atual em caso de falha
     }
   }, []);
 
   const refetchHome = useCallback(async ({ isPullToRefresh = false } = {}) => {
     if (!usuarioId) {
       setPrimeiroNome('Usuário');
+      setXpUsuario(0);
       setDadosCarregando(false);
       setRefreshing(false);
       return;
@@ -105,7 +173,10 @@ export default function HomeScreen() {
         setDadosCarregando(true);
       }
 
-      await carregarNomeUsuario(usuarioId);
+      await Promise.all([
+        carregarNomeUsuario(usuarioId),
+        carregarXpUsuario(usuarioId),
+      ]);
       setRefreshKey((prev) => prev + 1);
     } catch (err) {
       console.error('Erro ao carregar dados da home:', err);
@@ -113,7 +184,7 @@ export default function HomeScreen() {
       setDadosCarregando(false);
       setRefreshing(false);
     }
-  }, [usuarioId, carregarNomeUsuario]);
+  }, [usuarioId, carregarNomeUsuario, carregarXpUsuario]);
 
   useFocusEffect(
     useCallback(() => {
@@ -124,6 +195,8 @@ export default function HomeScreen() {
   const onRefresh = useCallback(() => {
     refetchHome({ isPullToRefresh: true });
   }, [refetchHome]);
+
+  const podeExibirDestaquesSemanas = xpUsuario >= MINIMO_XP_DESTAQUES;
 
   return (
     <ThemedView style={styles.container}>
@@ -159,8 +232,14 @@ export default function HomeScreen() {
             <ThemedView style={styles.cardsContainer}>
               <CardOfensiva key={`ofensiva-${usuarioId}-${refreshKey}`} usuarioId={usuarioId} />
               <ProximaAtividadeCard key={`proxima-${usuarioId}-${refreshKey}`} usuarioId={usuarioId} />
-              <CardConquistasDesbloqueadas key={`conquistas-${usuarioId}-${refreshKey}`} usuarioId={usuarioId} />
-              <CardDestaquesSemanas key={`destaques-${usuarioId}-${refreshKey}`} usuarioId={usuarioId} />
+              {/* <CardConquistasDesbloqueadas key={`conquistas-${usuarioId}-${refreshKey}`} usuarioId={usuarioId} /> */}
+              {podeExibirDestaquesSemanas ? (
+                <CardDestaquesSemanas
+                  key={`destaques-${usuarioId}-${refreshKey}`}
+                  usuarioId={usuarioId}
+                  xp={xpUsuario}
+                />
+              ) : null}
             </ThemedView>
           ) : null}
 

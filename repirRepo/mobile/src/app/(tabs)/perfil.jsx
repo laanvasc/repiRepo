@@ -3,7 +3,7 @@ import { Image } from 'expo-image';
 import { router, useFocusEffect, useLocalSearchParams } from 'expo-router';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { ActivityIndicator, Animated, Platform, RefreshControl, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 import { ThemedText } from '@/components/themed-text';
@@ -96,6 +96,7 @@ function SettingsButton({ onPress }) {
 }
 
 export default function PerfilScreen() {
+  const insets = useSafeAreaInsets();
   const params = useLocalSearchParams();
   const auth = useAuth?.() || {};
 
@@ -233,12 +234,12 @@ export default function PerfilScreen() {
   const handleScroll = useCallback((event) => {
     const offsetY = event?.nativeEvent?.contentOffset?.y ?? 0;
 
-    // Histerese (85 para mostrar, 55 para ocultar) evita alternância rápida perto do limiar
+    // Ignora arrasto para baixo no topo (offsetY <= 0) e usa histerese (85 / 55)
     let proximoEstado = headerVisivelRef.current;
-    if (!headerVisivelRef.current && offsetY > 85) {
-      proximoEstado = true;
-    } else if (headerVisivelRef.current && offsetY < 55) {
+    if (offsetY <= 0 || offsetY < 55) {
       proximoEstado = false;
+    } else if (!headerVisivelRef.current && offsetY > 85) {
+      proximoEstado = true;
     }
 
     if (proximoEstado !== headerVisivelRef.current) {
@@ -257,18 +258,21 @@ export default function PerfilScreen() {
 
   const headerTranslateY = headerAnim.interpolate({
     inputRange: [0, 1],
-    outputRange: [-16, 0],
+    outputRange: [-14, 0],
   });
+
+  const topoSticky = Math.max(insets.top, 8) + 8;
 
   return (
     <ThemedView style={styles.container}>
       <SafeAreaView style={styles.safeArea} edges={['top', 'left', 'right']}>
-        {/* Barra sobreposta suave ao rolar para baixo, sem deslocar o ScrollView */}
+        {/* Barra sobreposta suave ao rolar para baixo, afastada do topo e de notificações */}
         <Animated.View
           pointerEvents="box-none"
           style={[
             styles.stickyHeader,
             {
+              top: topoSticky,
               opacity: headerAnim,
               transform: [{ translateY: headerTranslateY }],
             },
@@ -404,12 +408,11 @@ const styles = StyleSheet.create({
   },
   stickyHeader: {
     position: 'absolute',
-    top: 0,
     left: 0,
     right: 0,
-    zIndex: 20,
+    zIndex: 10,
+    elevation: 4,
     paddingHorizontal: Spacing.four,
-    paddingTop: 6,
   },
   stickyInner: {
     flexDirection: 'row',
